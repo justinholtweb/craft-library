@@ -11,6 +11,7 @@ use craft\elements\Asset;
 use craft\helpers\Db;
 use justinholtweb\library\Plugin;
 use justinholtweb\library\records\HashRecord;
+use justinholtweb\library\records\UsageRecord;
 use Throwable;
 use yii\base\Component;
 
@@ -90,11 +91,19 @@ class Duplicates extends Component
             ->andWhere(['a.size' => $sharedSizes])
             ->andWhere([
                 'or',
+                // Never hashed: no row at all.
                 ['h.assetId' => null],
-                ['h.hash' => null],
                 // The file was replaced since it was hashed, so the stored hash is stale.
                 '[[h.size]] <> [[a.size]]',
             ]);
+
+        // A row with a null hash is one that was *tried and could not be read*, and it is
+        // deliberately not re-selected. Treating it as "needs hashing" made every batch pick the
+        // same unreadable files, fail on all of them, and return 0 — which is the signal both the
+        // console loop and the browser loop use to stop. A handful of broken files at the front of
+        // an unordered result set therefore halted hashing for the entire library, permanently,
+        // while the pending count sat unchanged. `library/audit/hash --all` after fixing the file,
+        // or clearHashes(), is how a genuine retry happens.
 
         if ($excluded) {
             $query->andWhere(['not', ['a.volumeId' => $excluded]]);
@@ -109,6 +118,8 @@ class Duplicates extends Component
         if ($asset->id === null) {
             return false;
         }
+
+        $stream = null;
 
         try {
             $stream = $asset->getStream();
@@ -126,7 +137,6 @@ class Duplicates extends Component
                 hash_update($context, $chunk);
             }
 
-            fclose($stream);
             $hash = hash_final($context);
         } catch (Throwable $e) {
             Craft::warning("Library could not hash asset {$asset->id}: {$e->getMessage()}", Plugin::LOG_CATEGORY);
@@ -148,6 +158,12 @@ class Duplicates extends Component
             ]);
 
             return false;
+        } finally {
+            // A batch of a hundred unreadable remote files would otherwise leak a hundred handles
+            // and hit the open-file limit before the run finished.
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
         }
 
         Db::upsert(HashRecord::TABLE, [
@@ -330,8 +346,28 @@ class Duplicates extends Component
                 updateTimestamp: false,
             );
 
+            // The same collision the relations block above guards against, on
+            // `library_usage`'s unique (assetId, elementId, source). An element whose body
+            // reference-tags *both* files has a row for each, and switching the copy's row over
+            // would duplicate the original's. Without this the merge throws 1062, the transaction
+            // rolls back, and that duplicate pair can never be resolved.
+            $collidingRefs = (new Query())
+                ->select(['dupe.id'])
+                ->from(['dupe' => UsageRecord::TABLE])
+                ->innerJoin(['keep' => UsageRecord::TABLE], [
+                    'and',
+                    '[[keep.elementId]] = [[dupe.elementId]]',
+                    '[[keep.source]] = [[dupe.source]]',
+                ])
+                ->where(['dupe.assetId' => $copy->id, 'keep.assetId' => $original->id])
+                ->column();
+
+            if ($collidingRefs) {
+                Db::delete(UsageRecord::TABLE, ['id' => $collidingRefs]);
+            }
+
             $refs = Db::update(
-                \justinholtweb\library\records\UsageRecord::TABLE,
+                UsageRecord::TABLE,
                 ['assetId' => $original->id],
                 ['assetId' => $copy->id],
                 updateTimestamp: false,

@@ -176,7 +176,7 @@ would be a way around volume permissions.
 
 ```sh
 docker exec -w /var/www/html ddev-plugin-testing-web \
-  php /var/www/craft-library/tests/integration/checks.php   # 73 checks
+  php /var/www/craft-library/tests/integration/checks.php   # 77 checks
 ```
 
 The checks run against a real Craft install: real element saves, real files on a real volume, the

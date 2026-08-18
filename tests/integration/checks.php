@@ -73,10 +73,15 @@ if ($plugin === null) {
     exit(1);
 }
 
-// Pro for the duration of the run. Restored in the teardown, so a harness left on Lite stays on it.
+// Pro for the duration of the run, restored in teardown so a harness left on Lite stays on it.
+//
+// The edition is set on the plugin instance rather than through switchEdition(), which writes to
+// project config: what is under test is Library's own gating, and `Plugin::is()` reads this property
+// directly. Going through project config also made the run order-dependent — once an earlier run had
+// flushed an edition change to `config/project/*.yaml`, the next one died with
+// StaleResourceException before it reached the checks that mattered.
 $originalEdition = $plugin->edition;
-Craft::$app->getPlugins()->switchEdition('library', Plugin::EDITION_PRO);
-$plugin = Plugin::getInstance();
+$plugin->edition = Plugin::EDITION_PRO;
 
 $created = ['collections' => [], 'assets' => [], 'folders' => [], 'entries' => []];
 
@@ -101,14 +106,30 @@ if ($volume === null) {
 $assetsService = Craft::$app->getAssets();
 $rootFolder = $assetsService->getRootFolderByVolumeId($volume->id);
 
-$testFolder = new craft\models\VolumeFolder([
+// Reused if it survived a previous run. A suite that cannot start because it crashed last time is
+// a suite nobody runs, and the crash is exactly when you most want to run it again.
+$testFolder = $assetsService->findFolder([
     'parentId' => $rootFolder->id,
-    'volumeId' => $volume->id,
     'name' => 'library-checks',
-    'path' => 'library-checks/',
 ]);
 
-$assetsService->createFolder($testFolder, true);
+if ($testFolder === null) {
+    $testFolder = new craft\models\VolumeFolder([
+        'parentId' => $rootFolder->id,
+        'volumeId' => $volume->id,
+        'name' => 'library-checks',
+        'path' => 'library-checks/',
+    ]);
+
+    $assetsService->createFolder($testFolder, true);
+}
+
+// Anything left in there by an interrupted run, so stale files cannot skew a count or a duplicate
+// group in this one.
+foreach (Asset::find()->folderId($testFolder->id)->status(null)->trashed(null)->all() as $stale) {
+    Craft::$app->getElements()->deleteElement($stale, true);
+}
+
 $created['folders'][] = $testFolder;
 
 /** Writes a real PNG of the given dimensions and returns the saved asset. */
@@ -661,6 +682,118 @@ try {
         return $pending === 0 ?: "$pending files were still considered at a 0 MB cap";
     });
 
+    check('an unreadable file is not offered for hashing again', function() {
+        // A null hash means "tried and could not be read". Counting it as "needs hashing" made every
+        // batch re-select the same broken files, fail on all of them and return 0 — the signal both
+        // hashing loops use to stop — so a handful of bad files halted hashing for the whole library.
+        $a = makeAsset('libcheck-unreadable-a.png', 41, 41);
+        $b = makeAsset('libcheck-unreadable-b.png', 41, 41);
+
+        $plugin = Plugin::getInstance();
+        $plugin->duplicates->hashAsset($a);
+
+        // Stand in for a file the filesystem could not return.
+        Db::update(justinholtweb\library\records\HashRecord::TABLE, ['hash' => null], ['assetId' => $a->id]);
+
+        $pendingIds = (new craft\db\Query())
+            ->select(['h.assetId'])
+            ->from(['h' => justinholtweb\library\records\HashRecord::TABLE])
+            ->where(['h.assetId' => $a->id])
+            ->column();
+
+        // The row exists with a null hash…
+        if (count($pendingIds) !== 1) {
+            return 'the null-hash row was not written';
+        }
+
+        // …and a hashing pass must now pick up only the sibling that has never been tried.
+        $before = $plugin->duplicates->getPendingHashCount();
+        $plugin->duplicates->hashBatch();
+        $after = $plugin->duplicates->getPendingHashCount();
+
+        $aStillPending = (new craft\db\Query())
+            ->select(['assetId'])
+            ->from(justinholtweb\library\records\HashRecord::TABLE)
+            ->where(['assetId' => $a->id, 'hash' => null])
+            ->exists();
+
+        return $after < $before && $aStillPending
+            ?: "pending went $before -> $after; the unreadable file " . ($aStillPending ? 'stayed null' : 'was rehashed');
+    });
+
+    check('merging a duplicate survives an element that references both files', function() {
+        // library_usage is unique on (assetId, elementId, source). An element whose body
+        // reference-tags both files has a row for each, and switching the copy's row over would
+        // duplicate the original's — throwing 1062, rolling the transaction back and leaving that
+        // pair permanently unresolvable.
+        $original = makeAsset('libcheck-refboth-original.png', 43, 43);
+        $copy = makeAsset('libcheck-refboth-copy.png', 43, 43);
+        $referrer = makeAsset('libcheck-refboth-referrer.png', 44, 44);
+
+        foreach ([$original->id, $copy->id] as $assetId) {
+            Db::insert(justinholtweb\library\records\UsageRecord::TABLE, [
+                'assetId' => $assetId,
+                'elementId' => $referrer->id,
+                'elementType' => Asset::class,
+                'siteId' => Craft::$app->getSites()->getPrimarySite()->id,
+                'source' => Usage::SOURCE_REFTAG,
+            ]);
+        }
+
+        try {
+            Plugin::getInstance()->duplicates->repoint($copy, $original);
+        } catch (Throwable $e) {
+            return 'repoint threw: ' . get_class($e) . ' ' . $e->getMessage();
+        }
+
+        $rows = (new craft\db\Query())
+            ->select(['assetId'])
+            ->from(justinholtweb\library\records\UsageRecord::TABLE)
+            ->where(['elementId' => $referrer->id, 'source' => Usage::SOURCE_REFTAG])
+            ->column();
+
+        return array_map('intval', $rows) === [(int)$original->id]
+            ?: 'usage rows left as ' . implode(',', $rows);
+    });
+
+    check('every write action narrows its query to savable assets', function() {
+        // Craft's index hands an action whatever the reader can see, and viewAssets exists without
+        // saveAssets. Asserted through the guard rather than the permission system, so the check
+        // stays meaningful without building a restricted user and volume.
+        foreach ([
+            justinholtweb\library\elementactions\AssignToCollections::class,
+            justinholtweb\library\elementactions\RemoveFromCollections::class,
+            justinholtweb\library\elementactions\SetAltText::class,
+            justinholtweb\library\elementactions\BulkRename::class,
+            justinholtweb\library\elementactions\MoveToVolume::class,
+        ] as $class) {
+            $method = new ReflectionMethod($class, 'savableOnly');
+            $method->setAccessible(true);
+
+            $query = Asset::find();
+            $method->invoke(new $class(), $query);
+
+            if ($query->savable !== true) {
+                $short = substr($class, strrpos($class, '\\') + 1);
+                return "$short did not narrow its query to savable assets";
+            }
+        }
+
+        return true;
+    });
+
+    check('a filename that looks like a query operator is still renamed', function() {
+        // Craft reads a leading `not ` as an operator, so "not final.png" was parsed as
+        // "filename != final.png" — matching nearly everything, so the rename was refused as a
+        // collision with itself.
+        $asset = makeAsset('not final.png', 45, 45);
+
+        $rows = Plugin::getInstance()->renamer->preview([$asset], 'libcheck-operator-{id}.{ext}');
+
+        return $rows[0]['problem'] === null
+            ?: 'refused with: ' . $rows[0]['problem'];
+    });
+
     // -----------------------------------------------------------------------------------------
     section('Usage');
 
@@ -1045,7 +1178,7 @@ try {
     });
 
     check('Lite drops the Pro rules but keeps collections', function() {
-        Craft::$app->getPlugins()->switchEdition('library', Plugin::EDITION_LITE);
+        Plugin::getInstance()->edition = Plugin::EDITION_LITE;
 
         try {
             $condition = new AssetCondition();
@@ -1057,7 +1190,7 @@ try {
                 && !in_array(HasDuplicatesConditionRule::class, $types, true)
                 ?: 'Lite registered: ' . implode(', ', array_map(fn($t) => substr($t, strrpos($t, '\\') + 1), $types));
         } finally {
-            Craft::$app->getPlugins()->switchEdition('library', Plugin::EDITION_PRO);
+            Plugin::getInstance()->edition = Plugin::EDITION_PRO;
         }
     });
 
@@ -1070,7 +1203,7 @@ try {
         ]);
 
         Plugin::getInstance()->rules->saveRule($rule);
-        Craft::$app->getPlugins()->switchEdition('library', Plugin::EDITION_LITE);
+        Plugin::getInstance()->edition = Plugin::EDITION_LITE;
 
         try {
             $asset = makeAsset('libcheck-literule-hit.png', 29, 31);
@@ -1078,18 +1211,18 @@ try {
 
             return !in_array($photos->id, $ids, true) ?: 'a Pro-only upload rule ran on Lite';
         } finally {
-            Craft::$app->getPlugins()->switchEdition('library', Plugin::EDITION_PRO);
+            Plugin::getInstance()->edition = Plugin::EDITION_PRO;
             Plugin::getInstance()->rules->deleteRuleById((int)$rule->id);
         }
     });
 
     check('usageCount through the Twig variable is null on Lite', function() use ($square) {
-        Craft::$app->getPlugins()->switchEdition('library', Plugin::EDITION_LITE);
+        Plugin::getInstance()->edition = Plugin::EDITION_LITE;
 
         try {
             return (new justinholtweb\library\twig\LibraryVariable())->usageCount($square) === null;
         } finally {
-            Craft::$app->getPlugins()->switchEdition('library', Plugin::EDITION_PRO);
+            Plugin::getInstance()->edition = Plugin::EDITION_PRO;
         }
     });
 
@@ -1254,6 +1387,12 @@ try {
 
     foreach ($created['folders'] as $folder) {
         try {
+            // Assets first: a folder that still holds files will not delete, and leaving it behind
+            // is what stops the next run from starting.
+            foreach (Asset::find()->folderId($folder->id)->status(null)->trashed(null)->all() as $leftover) {
+                $elements->deleteElement($leftover, true);
+            }
+
             Craft::$app->getAssets()->deleteFoldersByIds([$folder->id]);
         } catch (Throwable $e) {
             echo "  ! could not delete folder {$folder->id}: {$e->getMessage()}\n";
@@ -1261,7 +1400,7 @@ try {
     }
 
     // Leaves the harness on whichever edition it was found on.
-    Craft::$app->getPlugins()->switchEdition('library', $originalEdition);
+    Plugin::getInstance()->edition = $originalEdition;
 
     echo "  ✓ cleaned up\n";
 

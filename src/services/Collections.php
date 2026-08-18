@@ -8,6 +8,7 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
 use justinholtweb\library\models\Collection;
+use justinholtweb\library\Plugin;
 use justinholtweb\library\records\CollectionAssetRecord;
 use justinholtweb\library\records\CollectionRecord;
 use yii\base\Component;
@@ -274,5 +275,9 @@ class Collections extends Component
         $this->all = null;
         $this->counts = null;
         $this->byParent = null;
+
+        // Membership caches collections per asset, so a chip for a collection that has just been
+        // renamed or deleted would otherwise keep rendering for the rest of the request.
+        Plugin::getInstance()->membership->clearCache();
     }
 }

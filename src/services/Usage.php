@@ -262,13 +262,23 @@ class Usage extends Component
         }
     }
 
-    /** @return int[] Asset IDs nothing points at. */
-    public function getUnusedAssetIds(?int $limit = null): array
+    /**
+     * @param int|null $limit
+     * @param int|null $offset Paged in SQL. The audit screen used to pull every unused ID back and
+     *                         slice in PHP, which on a library with thirty thousand unused files
+     *                         meant dragging thirty thousand rows across to render fifty.
+     * @return int[] Asset IDs nothing points at.
+     */
+    public function getUnusedAssetIds(?int $limit = null, ?int $offset = null): array
     {
-        $query = $this->unusedQuery();
+        $query = $this->unusedQuery()->orderBy(['a.id' => SORT_ASC]);
 
         if ($limit !== null) {
             $query->limit($limit);
+        }
+
+        if ($offset !== null) {
+            $query->offset($offset);
         }
 
         return array_map('intval', $query->column());
@@ -312,6 +322,8 @@ class Usage extends Component
         if ($elementId === null) {
             return;
         }
+
+        $this->countCache = [];
 
         // Never record a draft or a revision: they are not places the asset is published, and
         // leaving them in makes every asset on the site look used.
@@ -362,6 +374,8 @@ class Usage extends Component
     /** Drops every cached reference-tag row, so a scan starts from a clean slate. */
     public function clearRefUsage(): int
     {
+        $this->countCache = [];
+
         return Db::delete(UsageRecord::TABLE, ['source' => self::SOURCE_REFTAG]);
     }
 

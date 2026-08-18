@@ -6,6 +6,7 @@ namespace justinholtweb\library\elementactions;
 
 use Craft;
 use craft\base\ElementAction;
+use craft\elements\db\AssetQuery;
 use craft\elements\db\ElementQueryInterface;
 use justinholtweb\library\Plugin;
 use justinholtweb\library\web\assets\cp\CpAsset;
@@ -56,9 +57,23 @@ class RemoveFromCollections extends ElementAction
         ]);
     }
 
+    /**
+     * Narrows the action to assets this user may actually save.
+     *
+     * Craft's element index hands an action whatever the reader can *see*, and `viewAssets` is a
+     * real permission without `saveAssets` — a read-only volume, or someone else's uploads when
+     * `savePeerAssets` is not granted. Without this, one global "bulk edit" permission would let an
+     * editor rename, move or re-describe files in volumes they only have read access to.
+     */
+    private function savableOnly(ElementQueryInterface $query): ElementQueryInterface
+    {
+        /** @var AssetQuery $query */
+        return $query->savable();
+    }
+
     public function performAction(ElementQueryInterface $query): bool
     {
-        $assetIds = array_map('intval', $query->ids());
+        $assetIds = array_map('intval', $this->savableOnly($query)->ids());
 
         if (!$assetIds) {
             $this->setMessage(Craft::t('library', 'No assets were selected.'));

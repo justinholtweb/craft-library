@@ -47,9 +47,6 @@ class Scanner extends Component
      */
     public function scan(int $batchSize = 500, ?callable $progress = null): array
     {
-        $usage = Plugin::getInstance()->usage;
-        $usage->clearRefUsage();
-
         $total = (int)$this->candidateQuery()->count();
         $scanned = 0;
         $found = [];
@@ -86,7 +83,25 @@ class Scanner extends Component
             }
         }
 
-        return $this->record($found) + ['scanned' => $scanned];
+        // The delete and the rebuild happen together, at the end, in one transaction — not before
+        // the read loop. Clearing first meant that a scan which timed out, lost its connection or
+        // hit one bad row left the site with *no* recorded reference-tag usage at all, so every
+        // asset referenced only by a typed tag showed up as unused. That is the list editors bulk
+        // delete from, which makes a half-finished scan actively dangerous rather than merely
+        // incomplete.
+        $db = Craft::$app->getDb();
+        $transaction = $db->beginTransaction();
+
+        try {
+            Plugin::getInstance()->usage->clearRefUsage();
+            $result = $this->record($found);
+            $transaction->commit();
+        } catch (\Throwable $e) {
+            $transaction->rollBack();
+            throw $e;
+        }
+
+        return $result + ['scanned' => $scanned];
     }
 
     /**
@@ -217,41 +232,58 @@ class Scanner extends Component
     }
 
     /**
-     * Rescans one element's content. Used on save, so the cached half of usage keeps up without
-     * waiting for a full scan.
+     * Rescans one element's content across every site it exists in.
+     *
+     * Deliberately *not* scoped to a single site. Usage is recorded per element — the unique index
+     * is `(assetId, elementId, source)`, with no site in it — so the delete below clears the
+     * element's rows outright, and anything less than a full re-read would drop references that
+     * only appear in another site's translation.
+     *
+     * That is exactly what an earlier version did: it deleted every row for the element and then
+     * re-recorded from the one site it was handed, so on a multi-site save the last site processed
+     * won and a reference living only in another translation vanished. The asset then read as
+     * unused — on the screen people delete files from.
      */
-    public function rescanElement(int $elementId, int $siteId): void
+    public function rescanElement(int $elementId): void
     {
-        $content = (new Query())
-            ->select(['content'])
-            ->from(CraftTable::ELEMENTS_SITES)
-            ->where(['elementId' => $elementId, 'siteId' => $siteId])
-            ->scalar();
+        $rows = (new Query())
+            ->select(['es.siteId', 'es.content', 'e.type'])
+            ->from(['es' => CraftTable::ELEMENTS_SITES])
+            ->innerJoin(['e' => CraftTable::ELEMENTS], '[[e.id]] = [[es.elementId]]')
+            ->where(['es.elementId' => $elementId])
+            ->all();
 
         Db::delete(UsageRecord::TABLE, [
             'elementId' => $elementId,
             'source' => Usage::SOURCE_REFTAG,
         ]);
 
-        if (!is_string($content) || $content === '') {
+        $refs = [];
+        $elementType = null;
+        $siteId = null;
+
+        foreach ($rows as $row) {
+            $elementType ??= (string)$row['type'];
+            $siteId ??= (int)$row['siteId'];
+
+            if (!is_string($row['content']) || $row['content'] === '') {
+                continue;
+            }
+
+            foreach ($this->extractAssetRefs($row['content']) as $assetId) {
+                // The site recorded is the first one the reference was seen in, and is
+                // informational only — the row itself stands for the element as a whole.
+                $refs[$assetId] ??= [
+                    'elementType' => (string)$row['type'],
+                    'siteId' => (int)$row['siteId'],
+                ];
+            }
+        }
+
+        if (!$refs) {
             return;
         }
 
-        $assetIds = $this->extractAssetRefs($content);
-
-        if (!$assetIds) {
-            return;
-        }
-
-        $row = (new Query())
-            ->select(['type'])
-            ->from(CraftTable::ELEMENTS)
-            ->where(['id' => $elementId])
-            ->scalar();
-
-        $this->record([$elementId => array_fill_keys($assetIds, [
-            'elementType' => (string)$row,
-            'siteId' => $siteId,
-        ])]);
+        $this->record([$elementId => $refs]);
     }
 }

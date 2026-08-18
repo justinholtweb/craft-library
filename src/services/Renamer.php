@@ -7,6 +7,7 @@ namespace justinholtweb\library\services;
 use Craft;
 use craft\elements\Asset;
 use craft\helpers\Assets as AssetsHelper;
+use craft\helpers\Db;
 use craft\models\VolumeFolder;
 use justinholtweb\library\Plugin;
 use Throwable;
@@ -232,7 +233,10 @@ class Renamer extends Component
     {
         return Asset::find()
             ->folderId($folderId ?? $asset->folderId)
-            ->filename(str_replace(['*', ','], ['\*', '\,'], $filename))
+            // Db::escapeParam, not a hand-rolled str_replace: Craft also treats a leading `not `,
+            // `!=`, `<=` and friends as operators, so a file genuinely named "not final.jpg" would
+            // be read as "filename != final.jpg" and match almost everything.
+            ->filename(Db::escapeParam($filename))
             ->id($asset->id !== null ? "not $asset->id" : null)
             ->status(null)
             ->exists();
@@ -249,7 +253,7 @@ class Renamer extends Component
 
             $exists = Asset::find()
                 ->folderId($folderId)
-                ->filename(str_replace(['*', ','], ['\*', '\,'], $candidate))
+                ->filename(Db::escapeParam($candidate))
                 ->status(null)
                 ->exists();
 

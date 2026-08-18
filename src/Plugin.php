@@ -566,7 +566,11 @@ class Plugin extends BasePlugin
                     return;
                 }
 
-                $this->scanner->rescanElement((int)$element->id, (int)$element->siteId);
+                // Runs on propagated saves too. Each run reads every site's content and rewrites
+                // the element's rows wholesale, so repeating it is idempotent — and skipping
+                // propagation would mean relying on the other sites' rows already being written
+                // when the canonical save fires, which is not something to depend on.
+                $this->scanner->rescanElement((int)$element->id);
             },
         );
     }

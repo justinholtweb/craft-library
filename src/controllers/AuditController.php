@@ -61,9 +61,8 @@ class AuditController extends Controller
         $page = max(1, (int)$this->request->getQueryParam('page', 1));
         $perPage = 50;
 
-        $ids = $plugin->usage->getUnusedAssetIds();
-        $total = count($ids);
-        $pageIds = array_slice($ids, ($page - 1) * $perPage, $perPage);
+        $total = $plugin->usage->getUnusedCount();
+        $pageIds = $plugin->usage->getUnusedAssetIds($perPage, ($page - 1) * $perPage);
 
         return $this->renderTemplate('library/audit/unused', [
             'plugin' => $plugin,

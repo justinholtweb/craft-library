@@ -7,6 +7,7 @@ namespace justinholtweb\library\elementactions;
 use Craft;
 use craft\base\ElementAction;
 use craft\elements\Asset;
+use craft\elements\db\AssetQuery;
 use craft\elements\db\ElementQueryInterface;
 use justinholtweb\library\models\Settings;
 use justinholtweb\library\Plugin;
@@ -62,10 +63,24 @@ class SetAltText extends ElementAction
         ]);
     }
 
+    /**
+     * Narrows the action to assets this user may actually save.
+     *
+     * Craft's element index hands an action whatever the reader can *see*, and `viewAssets` is a
+     * real permission without `saveAssets` — a read-only volume, or someone else's uploads when
+     * `savePeerAssets` is not granted. Without this, one global "bulk edit" permission would let an
+     * editor rename, move or re-describe files in volumes they only have read access to.
+     */
+    private function savableOnly(ElementQueryInterface $query): ElementQueryInterface
+    {
+        /** @var AssetQuery $query */
+        return $query->savable();
+    }
+
     public function performAction(ElementQueryInterface $query): bool
     {
         /** @var Asset[] $assets */
-        $assets = $query->kind(Asset::KIND_IMAGE)->all();
+        $assets = $this->savableOnly($query)->kind(Asset::KIND_IMAGE)->all();
 
         if (!$assets) {
             $this->setMessage(Craft::t('library', 'No images were selected. Alt text only applies to images.'));
