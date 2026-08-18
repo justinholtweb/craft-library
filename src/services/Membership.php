@@ -217,6 +217,34 @@ class Membership extends Component
     }
 
     /**
+     * Every collection's asset IDs in one query, keyed by collection ID.
+     *
+     * The asset index builds a source per collection on every render — and so does every asset field
+     * selector modal — so asking per collection is N queries on the hottest path in the plugin.
+     * Trashed assets are left out here rather than being handed to a source that would silently
+     * not match them.
+     *
+     * @return array<int,int[]>
+     */
+    public function getAllMemberships(): array
+    {
+        $rows = (new Query())
+            ->select(['ca.collectionId', 'ca.assetId'])
+            ->from(['ca' => CollectionAssetRecord::TABLE])
+            ->innerJoin(['e' => CraftTable::ELEMENTS], '[[e.id]] = [[ca.assetId]]')
+            ->where(['e.dateDeleted' => null])
+            ->all();
+
+        $map = [];
+
+        foreach ($rows as $row) {
+            $map[(int)$row['collectionId']][] = (int)$row['assetId'];
+        }
+
+        return $map;
+    }
+
+    /**
      * Moves every asset from one collection into another, then optionally deletes the source.
      * This is the "I made two collections for the same thing" repair.
      */

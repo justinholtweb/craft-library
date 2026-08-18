@@ -308,13 +308,23 @@ class Plugin extends BasePlugin
         $showCounts = $this->getSettings()->showCollectionCounts;
         $counts = $showCounts ? $collections->getAssetCounts() : [];
 
-        $build = function(array $branch) use (&$build, $collections, $showCounts, $counts): array {
+        // One query for every collection's membership, not one per collection. This runs on every
+        // asset index render and every asset field modal render.
+        $memberships = $this->membership->getAllMemberships();
+
+        $build = function(array $branch) use (&$build, $collections, $showCounts, $counts, $memberships): array {
             $sources = [];
 
             foreach ($branch as $collection) {
-                $ids = $this->membership->getAssetIdsInCollections(
-                    $collections->getIdWithDescendants((int)$collection->id),
-                );
+                $ids = [];
+
+                foreach ($collections->getIdWithDescendants((int)$collection->id) as $id) {
+                    foreach ($memberships[$id] ?? [] as $assetId) {
+                        $ids[$assetId] = true;
+                    }
+                }
+
+                $ids = array_keys($ids);
 
                 $source = [
                     'key' => 'library:collection:' . $collection->uid,
