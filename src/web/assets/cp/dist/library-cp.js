@@ -218,8 +218,10 @@
     boot(document);
   }
 
-  // Asset edit screens open in a slideout, whose contents arrive after this script has run.
-  if (window.Garnish) {
+  // An asset opened from an index arrives after this script has run — as a full page in most
+  // flows, but in a slideout in others. Guarded on Craft.Slideout existing: this file is loaded on
+  // element index pages too, and a missing class here would throw before anything else ran.
+  if (window.Garnish && window.Craft && Craft.Slideout) {
     Garnish.on(Craft.Slideout, 'open', function (event) {
       if (event.target && event.target.$container) {
         boot(event.target.$container[0]);
