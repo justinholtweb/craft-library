@@ -338,6 +338,34 @@ try {
         return (int)$rows === 0 && Craft::$app->getAssets()->getAssetById($asset->id) !== null;
     });
 
+    check('priming serves collections from cache instead of a query a row', function() use ($membership, $wide, $tall, $logos) {
+        $membership->assign([$wide->id, $tall->id], [$logos->id]);
+        $membership->clearCache();
+        $membership->primeFor([(int)$wide->id, (int)$tall->id]);
+
+        // Both must now answer from the primed cache, and answer correctly.
+        $wideIds = $membership->getCollectionIdsForAsset((int)$wide->id);
+        $tallIds = $membership->getCollectionIdsForAsset((int)$tall->id);
+
+        return in_array($logos->id, $wideIds, true) && in_array($logos->id, $tallIds, true)
+            ?: 'primed reads disagreed with the database';
+    });
+
+    check('a write invalidates the primed cache', function() use ($membership, $wide, $logos) {
+        // The index renders after the action runs, so a stale cache here would show the old
+        // collections immediately after an editor changed them.
+        $membership->primeFor([(int)$wide->id]);
+        $membership->remove([$wide->id], [$logos->id]);
+
+        $after = $membership->getCollectionIdsForAsset((int)$wide->id);
+
+        // Put it back for the checks that follow.
+        $membership->assign([$wide->id], [$logos->id]);
+
+        return !in_array($logos->id, $after, true)
+            ?: 'the cache still reported a membership that had been removed';
+    });
+
     // -----------------------------------------------------------------------------------------
     section('Collection condition rule');
 

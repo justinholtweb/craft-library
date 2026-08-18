@@ -25,6 +25,12 @@ use yii\db\IntegrityException;
 class Membership extends Component
 {
     /**
+     * @var array<int,Collection[]>|null Per-request cache, keyed by asset ID.
+     * @see primeFor()
+     */
+    private array $cache = [];
+
+    /**
      * Adds assets to collections, leaving any existing membership alone.
      *
      * @param int[] $assetIds
@@ -76,6 +82,7 @@ class Membership extends Component
             }
         }
 
+        $this->clearCache();
         Plugin::getInstance()->collections->clearCaches();
 
         return $inserted;
@@ -100,6 +107,7 @@ class Membership extends Component
             'assetId' => $assetIds,
         ]);
 
+        $this->clearCache();
         Plugin::getInstance()->collections->clearCaches();
 
         return $removed;
@@ -122,6 +130,7 @@ class Membership extends Component
 
         Db::delete(CollectionAssetRecord::TABLE, ['assetId' => $assetIds]);
 
+        $this->clearCache();
         Plugin::getInstance()->collections->clearCaches();
 
         $this->assign($assetIds, $collectionIds);
@@ -132,14 +141,41 @@ class Membership extends Component
     {
         $removed = Db::delete(CollectionAssetRecord::TABLE, ['collectionId' => $collectionId]);
 
+        $this->clearCache();
         Plugin::getInstance()->collections->clearCaches();
 
         return $removed;
     }
 
+    /**
+     * Loads collections for a set of assets into the per-request cache.
+     *
+     * The asset index renders the Collections column one row at a time, so without this the column
+     * costs a query per row. Craft fires `EVENT_PREP_QUERY_FOR_TABLE_ATTRIBUTE` with the page's
+     * query still unexecuted, which is where this gets called from.
+     *
+     * @param int[] $assetIds
+     */
+    public function primeFor(array $assetIds): void
+    {
+        $missing = array_values(array_diff($this->cleanIds($assetIds), array_keys($this->cache)));
+
+        if (!$missing) {
+            return;
+        }
+
+        foreach ($this->getCollectionsForAssets($missing) as $assetId => $collections) {
+            $this->cache[$assetId] = $collections;
+        }
+    }
+
     /** @return int[] Collection IDs the asset belongs to. */
     public function getCollectionIdsForAsset(int $assetId): array
     {
+        if (isset($this->cache[$assetId])) {
+            return array_map(fn(Collection $c) => (int)$c->id, $this->cache[$assetId]);
+        }
+
         return array_map('intval', (new Query())
             ->select(['collectionId'])
             ->from(CollectionAssetRecord::TABLE)
@@ -150,7 +186,14 @@ class Membership extends Component
     /** @return Collection[] */
     public function getCollectionsForAsset(int $assetId): array
     {
-        return Plugin::getInstance()->collections->getCollectionsByIds($this->getCollectionIdsForAsset($assetId));
+        return $this->cache[$assetId]
+            ?? Plugin::getInstance()->collections->getCollectionsByIds($this->getCollectionIdsForAsset($assetId));
+    }
+
+    /** Drops the per-request cache. Called by every write path here. */
+    public function clearCache(): void
+    {
+        $this->cache = [];
     }
 
     /**
@@ -287,6 +330,7 @@ class Membership extends Component
 
         $deleted = Db::delete(CollectionAssetRecord::TABLE, ['id' => $orphanIds]);
 
+        $this->clearCache();
         Plugin::getInstance()->collections->clearCaches();
 
         return $deleted;

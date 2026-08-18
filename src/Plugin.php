@@ -13,6 +13,7 @@ use craft\elements\Asset;
 use craft\elements\conditions\assets\AssetCondition;
 use craft\events\DefineHtmlEvent;
 use craft\events\ElementEvent;
+use craft\events\ElementIndexTableAttributeEvent;
 use craft\events\RegisterConditionRulesEvent;
 use craft\events\RegisterElementActionsEvent;
 use craft\events\RegisterElementSourcesEvent;
@@ -400,6 +401,31 @@ class Plugin extends BasePlugin
                     $event->tableAttributes['libraryUsage'] = [
                         'label' => Craft::t('library', 'Used in'),
                     ];
+                }
+            },
+        );
+
+        // Craft fires this once per column, with the page's query built but not yet run, so both
+        // Library columns can be loaded in one query each instead of one per row.
+        Event::on(
+            Asset::class,
+            Element::EVENT_PREP_QUERY_FOR_TABLE_ATTRIBUTE,
+            function(ElementIndexTableAttributeEvent $event) {
+                if (!in_array($event->attribute, ['libraryCollections', 'libraryUsage'], true)) {
+                    return;
+                }
+
+                // A clone, so reading the IDs cannot disturb the query Craft is about to run.
+                $assetIds = array_map('intval', (clone $event->query)->ids());
+
+                if (!$assetIds) {
+                    return;
+                }
+
+                if ($event->attribute === 'libraryCollections') {
+                    $this->membership->primeFor($assetIds);
+                } else {
+                    $this->usage->primeFor($assetIds);
                 }
             },
         );

@@ -31,6 +31,9 @@ use yii\base\Component;
  */
 class Usage extends Component
 {
+    /** @var array<int,int> Per-request cache of usage counts, keyed by asset ID. @see primeFor() */
+    private array $countCache = [];
+
     public const SOURCE_RELATION = 'relation';
     public const SOURCE_REFTAG = 'reftag';
 
@@ -117,7 +120,31 @@ class Usage extends Component
 
     public function getCountForAsset(int $assetId): int
     {
-        return $this->getCountsForAssets([$assetId])[$assetId] ?? 0;
+        return $this->countCache[$assetId] ?? $this->getCountsForAssets([$assetId])[$assetId] ?? 0;
+    }
+
+    /**
+     * Loads usage counts for a set of assets into the per-request cache.
+     *
+     * Same reason as Membership::primeFor() — the "Used in" column is rendered a row at a time, and
+     * each count is two grouped queries.
+     *
+     * @param int[] $assetIds
+     */
+    public function primeFor(array $assetIds): void
+    {
+        $missing = array_values(array_diff(
+            array_map('intval', $assetIds),
+            array_keys($this->countCache),
+        ));
+
+        if (!$missing) {
+            return;
+        }
+
+        foreach ($this->getCountsForAssets($missing) as $assetId => $count) {
+            $this->countCache[$assetId] = $count;
+        }
     }
 
     /**
