@@ -947,6 +947,63 @@ try {
     });
 
     // -----------------------------------------------------------------------------------------
+    section('Action wiring');
+
+    check('every trigger param the JavaScript sends is a settable action property', function() {
+        // ElementIndexesController hydrates an action by walking settingsAttributes() and reading a
+        // body param of the same name. A mismatch is silent — the action just runs with its default,
+        // so "preview only" could never be turned off and nobody would see an error.
+        $expected = [
+            justinholtweb\library\elementactions\AssignToCollections::class => ['collectionIds'],
+            justinholtweb\library\elementactions\RemoveFromCollections::class => ['collectionIds'],
+            justinholtweb\library\elementactions\SetAltText::class => ['source', 'overwrite'],
+            justinholtweb\library\elementactions\BulkRename::class => ['pattern', 'preview'],
+            justinholtweb\library\elementactions\MoveToVolume::class => ['volumeId', 'subfolder'],
+        ];
+
+        foreach ($expected as $class => $params) {
+            $action = new $class();
+            $attributes = $action->settingsAttributes();
+
+            foreach ($params as $param) {
+                if (!in_array($param, $attributes, true)) {
+                    $short = substr($class, strrpos($class, '\\') + 1);
+                    return "$short does not expose '$param'; it has: " . implode(', ', $attributes);
+                }
+            }
+        }
+
+        return true;
+    });
+
+    check('each action’s trigger id is a valid HTML id', function() {
+        foreach ([
+            justinholtweb\library\elementactions\AssignToCollections::class,
+            justinholtweb\library\elementactions\RemoveFromCollections::class,
+            justinholtweb\library\elementactions\SetAltText::class,
+            justinholtweb\library\elementactions\BulkRename::class,
+            justinholtweb\library\elementactions\MoveToVolume::class,
+        ] as $class) {
+            $id = (new $class())->getTriggerId();
+
+            // The default is the class name, backslashes included, which no selector can address.
+            if (!preg_match('/^[a-z][a-z0-9\-]*$/', $id)) {
+                return "$class has trigger id '$id'";
+            }
+        }
+
+        return true;
+    });
+
+    check('the collection and remove actions have distinct trigger ids', function() {
+        // They share a template; if they shared an id too, one panel would drive both actions.
+        $a = (new justinholtweb\library\elementactions\AssignToCollections())->getTriggerId();
+        $b = (new justinholtweb\library\elementactions\RemoveFromCollections())->getTriggerId();
+
+        return $a !== $b ?: "both are '$a'";
+    });
+
+    // -----------------------------------------------------------------------------------------
     section('Editions');
 
     check('Pro rules are registered on the asset condition', function() {
