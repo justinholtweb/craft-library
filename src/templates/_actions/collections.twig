@@ -1,0 +1,47 @@
+{#
+  Trigger for the add/remove collection bulk actions.
+
+  No <form>, and the submit button is type="button". Craft wraps every trigger in a form of its own,
+  snapshots the initial values of any `[name]` inputs into the action's settings, and then strips the
+  name attributes so nothing serialises afterwards — and it turns any submit button into a
+  `.formsubmit` that fires the action with that stale snapshot. Values are read from the DOM at click
+  time instead. See Craft.LibraryActionTrigger in library-cp.js for the rest of the reasoning.
+#}
+{#
+  A disclosure menu, not a `.menubtn` menu. Craft 5 rebuilds a plain `.menubtn` menu as a
+  listbox of `<li><a>` options and throws any other markup away — a form inside one silently
+  disappears. `data-disclosure-trigger` is the variant that keeps arbitrary content.
+#}
+<button type="button" class="btn menubtn" aria-controls="library-menu-{{ triggerId }}"
+        aria-expanded="false" data-disclosure-trigger>{{ label }}</button>
+<div id="library-menu-{{ triggerId }}" class="menu menu--disclosure" data-disclosure-menu>
+  <div class="padded" data-library-panel="{{ triggerId }}">
+    {% include 'library/_components/picker' with {
+      collections: collections,
+      selectedIds: [],
+    } only %}
+    <div class="buttons right" style="margin-top:10px">
+      <button type="button" class="btn submit" data-library-apply="{{ triggerId }}">{{ 'Apply'|t('library') }}</button>
+    </div>
+  </div>
+</div>
+
+{% js %}
+Craft.LibraryActionTrigger({
+  type: {{ type|json_encode|raw }},
+  triggerId: {{ triggerId|json_encode|raw }},
+  gather: ($panel) => {
+    const ids = $panel
+      .find('input[type=checkbox][data-collection-id]:checked')
+      .map((i, el) => parseInt(el.getAttribute('data-collection-id'), 10))
+      .get();
+
+    if (!ids.length) {
+      Craft.cp.displayError(Craft.t('library', 'Choose at least one collection.'));
+      return false;
+    }
+
+    return {collectionIds: ids};
+  },
+});
+{% endjs %}

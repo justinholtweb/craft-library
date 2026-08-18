@@ -1,0 +1,66 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Audit'|t('library') %}
+{% set crumbs = [{label: 'Library'|t('library'), url: url('library/collections')}] %}
+
+{% block content %}
+  <div class="library-stat-grid">
+    <div class="library-stat">
+      <div class="library-stat__value">{{ usage.total }}</div>
+      <div class="library-stat__label">{{ 'Assets'|t('library') }}</div>
+    </div>
+    <div class="library-stat {{ usage.unused > 0 ? 'library-stat--warning' : '' }}">
+      <div class="library-stat__value">{{ usage.unused }}</div>
+      <div class="library-stat__label">
+        <a href="{{ url('library/audit/unused') }}">{{ 'Not used anywhere'|t('library') }}</a>
+      </div>
+    </div>
+    <div class="library-stat {{ duplicates > 0 ? 'library-stat--warning' : '' }}">
+      <div class="library-stat__value">{{ duplicates }}</div>
+      <div class="library-stat__label">
+        <a href="{{ url('library/audit/duplicates') }}">{{ 'Duplicate copies'|t('library') }}</a>
+      </div>
+    </div>
+    <div class="library-stat {{ alt.missing > 0 ? 'library-stat--warning' : '' }}">
+      <div class="library-stat__value">{{ alt.missing }}</div>
+      <div class="library-stat__label">
+        <a href="{{ url('library/audit/alt') }}">{{ 'Images with no alt text'|t('library') }}</a>
+      </div>
+    </div>
+  </div>
+
+  <h2>{{ 'Reference tag scan'|t('library') }}</h2>
+  <p>
+    {{ 'Craft records a relation whenever an asset is chosen in a field, and Library reads those live — that half of “is this used?” is always current. What Craft cannot record is a reference somebody typed, like `{asset:412:url}` pasted into a text field. Scanning finds those.'|t('library') }}
+  </p>
+  <p class="light">
+    {{ '{n, plural, =0{No typed references found yet.} =1{1 typed reference is currently recorded.} other{# typed references are currently recorded.}}'|t('library', {n: usage.refRows}) }}
+  </p>
+  <form method="post" accept-charset="UTF-8">
+    {{ csrfInput() }}
+    <input type="hidden" name="action" value="library/audit/scan">
+    <button type="submit" class="btn">{{ 'Scan content now'|t('library') }}</button>
+  </form>
+
+  <hr>
+
+  <h2>{{ 'Duplicate detection'|t('library') }}</h2>
+  <p>
+    {{ 'Files are compared by size first and only hashed when a size is shared, so nothing is read unless it has a possible twin. Hashing reads the file, which on a remote volume means downloading it — so it runs in batches.'|t('library') }}
+  </p>
+
+  {% if pendingHashes > 0 %}
+    <p>
+      <span class="status-label status-label--yellow"><span class="status yellow"></span>{{ '{n} files still to hash'|t('library', {n: pendingHashes}) }}</span>
+    </p>
+    <p>
+      <button type="button" class="btn" data-library-hash-run data-pending="{{ pendingHashes }}">
+        {{ 'Hash now'|t('library') }}
+      </button>
+      <span class="light" data-library-hash-progress></span>
+    </p>
+    <p class="light">{{ 'Until this finishes, the duplicate count is a floor, not a total.'|t('library') }}</p>
+  {% else %}
+    <p><span class="status-label status-label--green"><span class="status green"></span>{{ 'Everything with a possible twin has been hashed.'|t('library') }}</span></p>
+  {% endif %}
+{% endblock %}

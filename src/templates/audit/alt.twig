@@ -1,0 +1,85 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{% set title = 'Alt text'|t('library') %}
+{% set crumbs = [
+  {label: 'Library'|t('library'), url: url('library/collections')},
+  {label: 'Audit'|t('library'), url: url('library/audit')},
+] %}
+
+{% block content %}
+  <div class="library-stat-grid">
+    <div class="library-stat">
+      <div class="library-stat__value">{{ stats.images }}</div>
+      <div class="library-stat__label">{{ 'Images on this site'|t('library') }}</div>
+    </div>
+    <div class="library-stat">
+      <div class="library-stat__value">{{ stats.described }}</div>
+      <div class="library-stat__label">{{ 'Described'|t('library') }}</div>
+    </div>
+    <div class="library-stat {{ stats.missing > 0 ? 'library-stat--warning' : '' }}">
+      <div class="library-stat__value">{{ stats.missing }}</div>
+      <div class="library-stat__label">{{ 'Missing alt text'|t('library') }}</div>
+    </div>
+  </div>
+
+  <p class="light">
+    {{ 'Alt text is per site, so this counts the current site only. Switch sites to check another.'|t('library') }}
+  </p>
+
+  {% if stats.missing > 0 %}
+    <form method="post" accept-charset="UTF-8">
+      {{ csrfInput() }}
+      <input type="hidden" name="action" value="library/audit/fill-alt">
+
+      {{ forms.selectField({
+        label: 'Fill the blanks from'|t('library'),
+        name: 'source',
+        options: [
+          {label: 'The filename'|t('library'), value: 'filename'},
+          {label: 'The title'|t('library'), value: 'title'},
+        ],
+      }) }}
+
+      <p class="light">
+        {{ 'This never overwrites alt text that is already there. What it writes is a first draft — “brand-logo_dark-2024_FINAL.png” becomes “Brand logo dark 2024”, which is worth an editor’s eye but beats an empty attribute for somebody using a screen reader.'|t('library') }}
+      </p>
+
+      <button type="submit" class="btn submit">{{ 'Fill in the blanks'|t('library') }}</button>
+    </form>
+
+    <hr>
+  {% endif %}
+
+  {% if assets|length %}
+    <table class="data fullwidth">
+      <thead>
+        <tr>
+          <th>{{ 'Image'|t('library') }}</th>
+          <th>{{ 'Would become'|t('library') }}</th>
+          <th>{{ 'Volume'|t('library') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for asset in assets %}
+          <tr>
+            <td><a href="{{ asset.getCpEditUrl() }}">{{ asset.filename }}</a></td>
+            <td class="light">{{ previews[asset.id] ?: '—' }}</td>
+            <td class="light">{{ asset.getVolume().name }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% set pages = (total / perPage)|round(0, 'ceil') %}
+    {% if pages > 1 %}
+      <nav class="pagination" style="margin-top:14px">
+        {% if page > 1 %}<a class="btn" href="{{ url('library/audit/alt', {page: page - 1}) }}">{{ '← Previous'|t('library') }}</a>{% endif %}
+        <span class="light">{{ 'Page {page} of {pages}'|t('library', {page: page, pages: pages}) }}</span>
+        {% if page < pages %}<a class="btn" href="{{ url('library/audit/alt', {page: page + 1}) }}">{{ 'Next →'|t('library') }}</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="zilch"><p>{{ 'Every image on this site has alt text.'|t('library') }}</p></div>
+  {% endif %}
+{% endblock %}

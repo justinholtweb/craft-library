@@ -1,0 +1,129 @@
+{% import '_includes/forms.twig' as forms %}
+
+{% set volumeOptions = [] %}
+{% for volume in craft.app.volumes.getAllVolumes() %}
+  {% set volumeOptions = volumeOptions|merge([{label: volume.name, value: volume.uid}]) %}
+{% endfor %}
+
+{{ forms.lightswitchField({
+  label: 'Show collections in the asset index'|t('library'),
+  instructions: 'Adds a Library heading to the asset index sidebar with one source per collection.'|t('library'),
+  id: 'showCollectionSources',
+  name: 'showCollectionSources',
+  on: settings.showCollectionSources,
+}) }}
+
+{{ forms.lightswitchField({
+  label: 'Show collections in asset selector modals'|t('library'),
+  instructions: 'Lets editors pick from a collection when choosing an image for an entry, not just from a folder.'|t('library'),
+  id: 'showCollectionSourcesInModals',
+  name: 'showCollectionSourcesInModals',
+  on: settings.showCollectionSourcesInModals,
+}) }}
+
+{{ forms.lightswitchField({
+  label: 'Show asset counts'|t('library'),
+  instructions: 'Puts a count badge on each collection source. Costs one extra query per index load.'|t('library'),
+  id: 'showCollectionCounts',
+  name: 'showCollectionCounts',
+  on: settings.showCollectionCounts,
+}) }}
+
+{{ forms.lightswitchField({
+  label: 'Show audit sources'|t('library'),
+  instructions: 'Adds a “Missing alt text” source to the asset index.'|t('library'),
+  id: 'showAuditSources',
+  name: 'showAuditSources',
+  on: settings.showAuditSources,
+}) }}
+
+{{ forms.lightswitchField({
+  label: 'Show the Library panel on assets'|t('library'),
+  instructions: 'Adds collections, and on Pro a “used in” list, to the asset edit screen sidebar.'|t('library'),
+  id: 'showAssetSidebarPanel',
+  name: 'showAssetSidebarPanel',
+  on: settings.showAssetSidebarPanel,
+}) }}
+
+<hr>
+
+{{ forms.selectField({
+  label: 'Default alt text source'|t('library'),
+  instructions: 'What newly uploaded images get for alternative text when no upload rule says otherwise. Derived alt text is a starting point for an editor, not a substitute for one.'|t('library'),
+  id: 'defaultAltSource',
+  name: 'defaultAltSource',
+  value: settings.defaultAltSource,
+  options: [
+    {label: 'Leave empty'|t('library'), value: 'none'},
+    {label: 'From the filename'|t('library'), value: 'filename'},
+    {label: 'From the title'|t('library'), value: 'title'},
+  ],
+}) }}
+
+{{ forms.checkboxSelectField({
+  label: 'Excluded volumes'|t('library'),
+  instructions: 'Volumes the audits and the usage scanner ignore. Cache and derivative volumes belong here.'|t('library'),
+  id: 'excludedVolumes',
+  name: 'excludedVolumes',
+  values: settings.excludedVolumes,
+  options: volumeOptions,
+  showAllOption: false,
+}) }}
+
+{% if plugin.isPro() %}
+  <hr>
+  <h2>{{ 'Pro'|t('library') }}</h2>
+
+  {{ forms.lightswitchField({
+    label: 'Apply upload rules'|t('library'),
+    instructions: 'Files new uploads into collections automatically. Turn off to stop the rules without deleting them.'|t('library'),
+    id: 'applyUploadRules',
+    name: 'applyUploadRules',
+    on: settings.applyUploadRules,
+  }) }}
+
+  {{ forms.lightswitchField({
+    label: 'Track usage as content is saved'|t('library'),
+    instructions: 'Keeps the reference-tag half of usage current without waiting for a full scan. Adds one small query per element save.'|t('library'),
+    id: 'trackUsageOnSave',
+    name: 'trackUsageOnSave',
+    on: settings.trackUsageOnSave,
+  }) }}
+
+  {{ forms.lightswitchField({
+    label: 'Scan content for reference tags'|t('library'),
+    instructions: 'Finds `{asset:12:url}` typed into text fields. Relations are always read live and are not affected by this.'|t('library'),
+    id: 'scanContentForRefs',
+    name: 'scanContentForRefs',
+    on: settings.scanContentForRefs,
+  }) }}
+
+  {{ forms.textField({
+    label: 'Maximum file size to hash (MB)'|t('library'),
+    instructions: 'The duplicate finder reads every candidate file, which on a remote volume means downloading it. Files larger than this are left out and reported as skipped.'|t('library'),
+    id: 'maxHashFileSizeMb',
+    name: 'maxHashFileSizeMb',
+    value: settings.maxHashFileSizeMb,
+    type: 'number',
+    min: 1,
+    size: 6,
+    errors: settings.getErrors('maxHashFileSizeMb'),
+  }) }}
+
+  {{ forms.textField({
+    label: 'Hash batch size'|t('library'),
+    instructions: 'How many files one hashing batch reads before handing control back.'|t('library'),
+    id: 'hashBatchSize',
+    name: 'hashBatchSize',
+    value: settings.hashBatchSize,
+    type: 'number',
+    min: 1,
+    size: 6,
+    errors: settings.getErrors('hashBatchSize'),
+  }) }}
+{% else %}
+  <hr>
+  <p class="light">
+    {{ 'Usage tracking, duplicate detection, bulk renaming, cross-volume moves and upload rules are part of Library Pro.'|t('library') }}
+  </p>
+{% endif %}

@@ -1,0 +1,100 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Upload rules'|t('library') %}
+{% set crumbs = [{label: 'Library'|t('library'), url: url('library/collections')}] %}
+
+{% block actionButton %}
+  <a href="{{ url('library/rules/new') }}" class="btn submit add icon">{{ 'New rule'|t('library') }}</a>
+{% endblock %}
+
+{% block content %}
+  <p class="light">
+    {{ 'Rules run when a file is uploaded, in the order below. Every matching rule adds its collections, so a file can be filed by more than one. Alt text is the exception — the first rule that sets a source wins.'|t('library') }}
+  </p>
+
+  {% if rules|length %}
+    {% set collectionsById = {} %}
+    {% for collection in collections %}
+      {% set collectionsById = collectionsById|merge({(collection.id): collection.name}) %}
+    {% endfor %}
+
+    <table class="data fullwidth">
+      <thead>
+        <tr>
+          <th>{{ 'Rule'|t('library') }}</th>
+          <th>{{ 'Matches'|t('library') }}</th>
+          <th>{{ 'Files into'|t('library') }}</th>
+          <th class="thin"></th>
+          <th class="thin"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rule in rules %}
+          <tr>
+            <td>
+              <span class="status {{ rule.enabled ? 'enabled' : 'disabled' }}"></span>
+              <a href="{{ url('library/rules/' ~ rule.id) }}">{{ rule.name }}</a>
+            </td>
+            <td class="light smalltext">
+              {% set bits = [] %}
+              {% if rule.volumeId %}
+                {% set volume = craft.app.volumes.getVolumeById(rule.volumeId) %}
+                {% set bits = bits|merge([('volume: ' ~ (volume ? volume.name : 'missing'|t('library')))]) %}
+              {% endif %}
+              {% if rule.folderPattern %}{% set bits = bits|merge(['folder: ' ~ rule.folderPattern]) %}{% endif %}
+              {% if rule.filenamePattern %}{% set bits = bits|merge(['file: ' ~ rule.filenamePattern]) %}{% endif %}
+              {% if rule.kinds|length %}{% set bits = bits|merge(['kind: ' ~ rule.kinds|join(', ')]) %}{% endif %}
+              {{ bits|length ? bits|join(' · ') : 'every upload'|t('library') }}
+            </td>
+            <td class="light smalltext">
+              {% set names = [] %}
+              {% for id in rule.collectionIds %}
+                {% if collectionsById[id] is defined %}{% set names = names|merge([collectionsById[id]]) %}{% endif %}
+              {% endfor %}
+              {{ names|length ? names|join(', ') : '—' }}
+              {% if rule.altSource and rule.altSource != 'none' %}
+                <br>{{ 'alt from {source}'|t('library', {source: rule.altSource}) }}
+              {% endif %}
+            </td>
+            <td class="thin">
+              <form method="post" accept-charset="UTF-8">
+                {{ csrfInput() }}
+                <input type="hidden" name="action" value="library/rules/backfill">
+                <input type="hidden" name="id" value="{{ rule.id }}">
+                <button type="submit" class="btn small" title="{{ 'Apply this rule to assets already uploaded'|t('library') }}">
+                  {{ 'Backfill'|t('library') }}
+                </button>
+              </form>
+            </td>
+            <td class="thin">
+              <a class="delete icon" role="button" data-library-delete-rule="{{ rule.id }}" title="{{ 'Delete'|t('library') }}"></a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="zilch">
+      <p>{{ 'No upload rules yet.'|t('library') }}</p>
+      <p class="light">
+        {{ 'A rule is how a library stays tidy without anybody remembering to tidy it — “anything uploaded to the Press volume goes in Press kit”, “anything called *-icon.svg goes in Icons”.'|t('library') }}
+      </p>
+      <a href="{{ url('library/rules/new') }}" class="btn submit add icon">{{ 'New rule'|t('library') }}</a>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% js %}
+$('[data-library-delete-rule]').on('click', function () {
+  const id = this.getAttribute('data-library-delete-rule');
+  const $row = $(this).closest('tr');
+
+  if (!confirm(Craft.t('library', 'Delete this rule? Assets already filed by it stay where they are.'))) {
+    return;
+  }
+
+  Craft.sendActionRequest('POST', 'library/rules/delete', {data: {id: id}})
+    .then(() => $row.remove())
+    .catch(() => Craft.cp.displayError());
+});
+{% endjs %}

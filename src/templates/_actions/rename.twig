@@ -1,0 +1,57 @@
+{# Trigger for the bulk rename action. Previews by default. #}
+{#
+  A disclosure menu, not a `.menubtn` menu. Craft 5 rebuilds a plain `.menubtn` menu as a
+  listbox of `<li><a>` options and throws any other markup away — a form inside one silently
+  disappears. `data-disclosure-trigger` is the variant that keeps arbitrary content.
+#}
+<button type="button" class="btn menubtn" aria-controls="library-menu-{{ triggerId }}"
+        aria-expanded="false" data-disclosure-trigger>{{ label }}</button>
+<div id="library-menu-{{ triggerId }}" class="menu menu--disclosure" data-disclosure-menu>
+  <div class="padded" data-library-panel="{{ triggerId }}" style="max-width:420px">
+    <div class="field">
+      <div class="heading"><label>{{ 'Filename pattern'|t('library') }}</label></div>
+      <div class="input">
+        <input type="text" class="text fullwidth code" data-library-pattern value="{basename}.{ext}">
+        <ul class="library-token-list light">
+          {% for token, description in tokens %}
+            <li><code>{{ token }}</code> — {{ description }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="field">
+      <div class="input">
+        <label>
+          <input type="checkbox" data-library-preview checked>
+          {{ 'Preview only — do not rename anything yet'|t('library') }}
+        </label>
+      </div>
+    </div>
+    <div class="buttons right">
+      <button type="button" class="btn submit" data-library-apply="{{ triggerId }}">{{ 'Run'|t('library') }}</button>
+    </div>
+  </div>
+</div>
+
+{% js %}
+Craft.LibraryActionTrigger({
+  type: {{ type|json_encode|raw }},
+  triggerId: {{ triggerId|json_encode|raw }},
+  gather: ($panel) => {
+    const pattern = ($panel.find('[data-library-pattern]').val() || '').trim();
+
+    if (!pattern) {
+      Craft.cp.displayError(Craft.t('library', 'Enter a filename pattern.'));
+      return false;
+    }
+
+    const preview = $panel.find('[data-library-preview]').is(':checked');
+
+    if (!preview && !confirm(Craft.t('library', 'This renames the files on disk. Continue?'))) {
+      return false;
+    }
+
+    return {pattern: pattern, preview: preview ? 1 : 0};
+  },
+});
+{% endjs %}

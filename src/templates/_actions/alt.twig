@@ -1,0 +1,49 @@
+{# Trigger for the "set alt text" bulk action. See _actions/collections.twig for the markup rules. #}
+{#
+  A disclosure menu, not a `.menubtn` menu. Craft 5 rebuilds a plain `.menubtn` menu as a
+  listbox of `<li><a>` options and throws any other markup away — a form inside one silently
+  disappears. `data-disclosure-trigger` is the variant that keeps arbitrary content.
+#}
+<button type="button" class="btn menubtn" aria-controls="library-menu-{{ triggerId }}"
+        aria-expanded="false" data-disclosure-trigger>{{ label }}</button>
+<div id="library-menu-{{ triggerId }}" class="menu menu--disclosure" data-disclosure-menu>
+  <div class="padded" data-library-panel="{{ triggerId }}" style="min-width:300px">
+    <div class="field">
+      <div class="heading"><label>{{ 'Take alt text from'|t('library') }}</label></div>
+      <div class="input">
+        <div class="select">
+          <select data-library-alt-source>
+            <option value="filename">{{ 'The filename'|t('library') }}</option>
+            <option value="title">{{ 'The title'|t('library') }}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <div class="input">
+        <label>
+          <input type="checkbox" data-library-alt-overwrite>
+          {{ 'Replace alt text that is already there'|t('library') }}
+        </label>
+        <p class="light">{{ 'Off by default — a description somebody wrote beats anything derived from a filename.'|t('library') }}</p>
+      </div>
+    </div>
+    <div class="buttons right">
+      <button type="button" class="btn submit" data-library-apply="{{ triggerId }}">{{ 'Set alt text'|t('library') }}</button>
+    </div>
+  </div>
+</div>
+
+{% js %}
+Craft.LibraryActionTrigger({
+  type: {{ type|json_encode|raw }},
+  triggerId: {{ triggerId|json_encode|raw }},
+  gather: ($panel) => ({
+    source: $panel.find('[data-library-alt-source]').val(),
+    // Sent explicitly as 0 or 1. An unchecked checkbox posts nothing, and a missing param leaves
+    // the action's PHP default in place — so the "off" position of a replace-what-is-there toggle
+    // could never be expressed.
+    overwrite: $panel.find('[data-library-alt-overwrite]').is(':checked') ? 1 : 0,
+  }),
+});
+{% endjs %}

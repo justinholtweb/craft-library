@@ -1,0 +1,81 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{% set title = isNew ? 'New collection'|t('library') : collection.name %}
+{% set fullPageForm = true %}
+{% set crumbs = [
+  {label: 'Library'|t('library'), url: url('library/collections')},
+  {label: 'Collections'|t('library'), url: url('library/collections')},
+] %}
+
+{% block content %}
+  <input type="hidden" name="action" value="library/collections/save">
+  {{ redirectInput('library/collections') }}
+  {% if not isNew %}
+    <input type="hidden" name="collectionId" value="{{ collection.id }}">
+  {% endif %}
+
+  {{ forms.textField({
+    first: true,
+    label: 'Name'|t('library'),
+    id: 'name',
+    name: 'name',
+    value: collection.name,
+    autofocus: true,
+    required: true,
+    errors: collection.getErrors('name'),
+  }) }}
+
+  {{ forms.textField({
+    label: 'Handle'|t('library'),
+    instructions: 'Used in templates: `craft.library.assets(\'logos\')`.'|t('library'),
+    id: 'handle',
+    name: 'handle',
+    class: 'code',
+    value: collection.handle,
+    required: true,
+    errors: collection.getErrors('handle'),
+  }) }}
+
+  {{ forms.textareaField({
+    label: 'Description'|t('library'),
+    instructions: 'What belongs in here. Shown to editors on the collections screen.'|t('library'),
+    id: 'description',
+    name: 'description',
+    value: collection.description,
+    rows: 2,
+    errors: collection.getErrors('description'),
+  }) }}
+
+  {{ forms.selectField({
+    label: 'Nested under'|t('library'),
+    instructions: 'Filtering by a parent includes everything in its children.'|t('library'),
+    id: 'parentId',
+    name: 'parentId',
+    value: collection.parentId,
+    options: parentOptions,
+    errors: collection.getErrors('parentId'),
+  }) }}
+
+  {% set colorOpts = [{label: 'None'|t('library'), value: ''}] %}
+  {% for color in colorOptions %}
+    {% set colorOpts = colorOpts|merge([{label: color|title, value: color}]) %}
+  {% endfor %}
+
+  {{ forms.selectField({
+    label: 'Colour'|t('library'),
+    instructions: 'Shows as a dot beside the collection in the sidebar and on asset chips.'|t('library'),
+    id: 'color',
+    name: 'color',
+    value: collection.color,
+    options: colorOpts,
+    errors: collection.getErrors('color'),
+  }) }}
+
+  {% if not isNew %}
+    <hr>
+    <p class="light">
+      {{ '{n, plural, =0{No assets are filed here yet.} =1{1 asset is filed here.} other{# assets are filed here.}}'|t('library', {n: assetCount}) }}
+    </p>
+  {% endif %}
+{% endblock %}

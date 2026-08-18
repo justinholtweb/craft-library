@@ -1,0 +1,59 @@
+{# The Library panel on the asset edit screen. #}
+<div class="meta library-panel" data-library-asset-panel data-asset-id="{{ asset.id }}">
+  <div class="library-panel__section">
+    <h5>{{ 'Collections'|t('library') }}</h5>
+
+    {% if canAssign %}
+      {# No `name`: see picker.twig — a named input here would dirty the asset's own form. #}
+      {% include 'library/_components/picker' with {
+        collections: collections,
+        selectedIds: selectedIds,
+      } only %}
+      <p class="light" style="margin-top:6px" data-library-status></p>
+    {% elseif selectedIds|length %}
+      {% include 'library/_components/chips' with {
+        collections: craft.library.collectionsFor(asset),
+        max: 12,
+      } only %}
+    {% else %}
+      <p class="light">{{ 'Not in any collection.'|t('library') }}</p>
+    {% endif %}
+  </div>
+
+  {% if plugin.isPro() %}
+    <div class="library-panel__section">
+      <h5>{{ 'Used in'|t('library') }}</h5>
+
+      {% if usage|length %}
+        <ul class="library-usage">
+          {% for place in usage|slice(0, 12) %}
+            {% set element = place.owner ?? place.element %}
+            <li>
+              {% if element and element.getCpEditUrl() %}
+                <a href="{{ element.getCpEditUrl() }}">{{ element.title ?? element.id }}</a>
+              {% elseif element %}
+                {{ element.title ?? element.id }}
+              {% else %}
+                <span class="light">{{ 'Element #{id}'|t('library', {id: place.elementId}) }}</span>
+              {% endif %}
+              <span class="library-usage__where">
+                {%- if place.fieldHandle %} · {{ place.fieldHandle }}{% endif %}
+                {%- if place.source == 'reftag' %} · {{ 'reference tag'|t('library') }}{% endif %}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+        {% if usage|length > 12 %}
+          <p class="light">{{ '+{n} more'|t('library', {n: usage|length - 12}) }}</p>
+        {% endif %}
+      {% else %}
+        <p>
+          <span class="status-label status-label--red"><span class="status red"></span>{{ 'Not used anywhere'|t('library') }}</span>
+        </p>
+        <p class="light">
+          {{ 'Nothing relates to this file. Reference tags typed into text are only known after a scan.'|t('library') }}
+        </p>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

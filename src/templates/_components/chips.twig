@@ -1,0 +1,13 @@
+{# Collection chips, used in the asset index column and on the asset panel. #}
+{% set max = max ?? 3 %}
+<div class="library-chips">
+  {% for collection in collections|slice(0, max) %}
+    <span class="library-chip">
+      {% if collection.color %}<span class="status {{ collection.color }}"></span>{% endif %}
+      {{ collection.name }}
+    </span>
+  {% endfor %}
+  {% if collections|length > max %}
+    <span class="library-chip library-chip--more">+{{ collections|length - max }}</span>
+  {% endif %}
+</div>

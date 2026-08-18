@@ -1,0 +1,57 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Not used anywhere'|t('library') %}
+{% set crumbs = [
+  {label: 'Library'|t('library'), url: url('library/collections')},
+  {label: 'Audit'|t('library'), url: url('library/audit')},
+] %}
+
+{% block content %}
+  <p>
+    {{ '{n, plural, =0{Everything is referenced somewhere.} =1{1 asset is not referenced by any content.} other{# assets are not referenced by any content.}}'|t('library', {n: total}) }}
+  </p>
+
+  <p class="light">
+    {{ 'Read this as “nothing in the CMS points at it”, not “nobody uses it”. A file linked from a template, a PDF sent out by email, or a favicon referenced by path will show up here. Check before deleting.'|t('library') }}
+    {% if lastScan == 0 %}
+      <br>
+      <strong>{{ 'No typed reference tags are recorded.'|t('library') }}</strong>
+      {{ 'Relations are always read live, but a tag typed into a text field is only found by a scan.'|t('library') }}
+      <a href="{{ url('library/audit') }}">{{ 'Run one'|t('library') }}</a>.
+    {% endif %}
+  </p>
+
+  {% if assets|length %}
+    <table class="data fullwidth">
+      <thead>
+        <tr>
+          <th>{{ 'File'|t('library') }}</th>
+          <th>{{ 'Volume'|t('library') }}</th>
+          <th class="thin">{{ 'Size'|t('library') }}</th>
+          <th class="thin">{{ 'Uploaded'|t('library') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for asset in assets %}
+          <tr>
+            <td><a href="{{ asset.getCpEditUrl() }}">{{ asset.filename }}</a></td>
+            <td class="light">{{ asset.getVolume().name }}{{ asset.folderPath ? ' / ' ~ asset.folderPath|trim('/') : '' }}</td>
+            <td class="thin light">{{ asset.size ? asset.size|filesize : '—' }}</td>
+            <td class="thin light">{{ asset.dateCreated|date('short') }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% set pages = (total / perPage)|round(0, 'ceil') %}
+    {% if pages > 1 %}
+      <nav class="pagination" style="margin-top:14px">
+        {% if page > 1 %}<a class="btn" href="{{ url('library/audit/unused', {page: page - 1}) }}">{{ '← Previous'|t('library') }}</a>{% endif %}
+        <span class="light">{{ 'Page {page} of {pages}'|t('library', {page: page, pages: pages}) }}</span>
+        {% if page < pages %}<a class="btn" href="{{ url('library/audit/unused', {page: page + 1}) }}">{{ 'Next →'|t('library') }}</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="zilch"><p>{{ 'Nothing to clean up.'|t('library') }}</p></div>
+  {% endif %}
+{% endblock %}

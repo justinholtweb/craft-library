@@ -1,0 +1,86 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{% set title = 'Collections'|t('library') %}
+{% set fullPageForm = false %}
+
+{% block actionButton %}
+  <a href="{{ url('library/collections/new') }}" class="btn submit add icon">{{ 'New collection'|t('library') }}</a>
+{% endblock %}
+
+{% macro row(collection, counts, depth) %}
+  {% import _self as m %}
+  <tr data-id="{{ collection.id }}" data-name="{{ collection.name }}">
+    <td style="padding-left: {{ 14 + depth * 22 }}px">
+      {% if collection.color %}<span class="status {{ collection.color }}"></span>{% endif %}
+      <a href="{{ url('library/collections/' ~ collection.id) }}">{{ collection.name }}</a>
+      {% if collection.description %}
+        <div class="light smalltext">{{ collection.description }}</div>
+      {% endif %}
+    </td>
+    <td><code>{{ collection.handle }}</code></td>
+    <td class="thin">{{ counts[collection.id] ?? 0 }}</td>
+    <td class="thin">
+      <a class="delete icon" title="{{ 'Delete'|t('library') }}" role="button"
+         data-library-delete="{{ collection.id }}"></a>
+    </td>
+  </tr>
+  {% for child in collection.children %}
+    {{ m.row(child, counts, depth + 1) }}
+  {% endfor %}
+{% endmacro %}
+
+{% block content %}
+  {# Imported as `m`, not `tree`: the page's own `tree` variable is the collection list. #}
+  {% import _self as m %}
+
+  {% if tree|length %}
+    <table class="data fullwidth">
+      <thead>
+        <tr>
+          <th>{{ 'Name'|t('library') }}</th>
+          <th>{{ 'Handle'|t('library') }}</th>
+          <th class="thin">{{ 'Assets'|t('library') }}</th>
+          <th class="thin"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for collection in tree %}
+          {{ m.row(collection, counts, 0) }}
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <p class="light" style="margin-top:14px">
+      {{ 'Counts include assets in nested collections. Deleting a collection unfiles its assets — it never deletes a file.'|t('library') }}
+    </p>
+  {% else %}
+    <div class="zilch">
+      <p>{{ 'No collections yet.'|t('library') }}</p>
+      <p class="light">
+        {{ 'Collections are a way to group assets across volumes and folders — “Logos”, “Team photos”, “Press kit”. Once you have some, they show up in the asset index sidebar and as a filter everywhere assets are chosen.'|t('library') }}
+      </p>
+      <a href="{{ url('library/collections/new') }}" class="btn submit add icon">{{ 'New collection'|t('library') }}</a>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% js %}
+$('[data-library-delete]').on('click', function () {
+  const id = this.getAttribute('data-library-delete');
+  const $row = $(this).closest('tr');
+  const name = $row.data('name');
+
+  if (!confirm(Craft.t('library', 'Delete “{name}”? The assets in it are not deleted.', {name: name}))) {
+    return;
+  }
+
+  Craft.sendActionRequest('POST', 'library/collections/delete', {data: {id: id}})
+    .then(() => {
+      // Children were promoted to the top level by the database, so the whole table is reloaded
+      // rather than guessing at where the rows moved to.
+      window.location.reload();
+    })
+    .catch(() => Craft.cp.displayError());
+});
+{% endjs %}

@@ -1,0 +1,38 @@
+{# A nested checkbox list of collections. Shared by the asset panel and the bulk actions. #}
+{#
+  `name` is optional, and usually omitted. A named input inside the asset edit screen's sidebar
+  becomes part of Craft's form, so ticking a collection marks the asset dirty and raises an
+  "unsaved changes" warning for something the panel has already saved by itself. Every reader of
+  these boxes goes through `data-collection-id` instead.
+#}
+{% macro rows(collections, selectedIds, name, depth) %}
+  {% import _self as picker %}
+  {% for collection in collections %}
+    {% set id = "library-pick-#{name ? name|replace({'[': '', ']': ''}) : 'x'}-#{collection.id}" %}
+    <div class="library-picker__row" style="padding-left: {{ 6 + depth * 16 }}px">
+      <input type="checkbox"
+             id="{{ id }}"
+             {% if name %}name="{{ name }}"{% endif %}
+             value="{{ collection.id }}"
+             data-collection-id="{{ collection.id }}"
+             {{ collection.id in selectedIds ? 'checked' : '' }}>
+      <label for="{{ id }}">
+        {% if collection.color %}<span class="status {{ collection.color }}"></span>{% endif %}
+        {{ collection.name }}
+      </label>
+    </div>
+    {{ picker.rows(collection.children, selectedIds, name, depth + 1) }}
+  {% endfor %}
+{% endmacro %}
+
+{% import _self as picker %}
+<div class="library-picker">
+  {% if collections|length %}
+    {{ picker.rows(collections, selectedIds ?? [], name ?? null, 0) }}
+  {% else %}
+    <div class="library-picker__empty">
+      {{ 'No collections yet.'|t('library') }}
+      <a href="{{ url('library/collections/new') }}">{{ 'Create one'|t('library') }}</a>.
+    </div>
+  {% endif %}
+</div>

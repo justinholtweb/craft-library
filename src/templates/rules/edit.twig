@@ -1,0 +1,107 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{% set title = isNew ? 'New rule'|t('library') : rule.name %}
+{% set fullPageForm = true %}
+{% set crumbs = [
+  {label: 'Library'|t('library'), url: url('library/collections')},
+  {label: 'Upload rules'|t('library'), url: url('library/rules')},
+] %}
+
+{% block content %}
+  <input type="hidden" name="action" value="library/rules/save">
+  {{ redirectInput('library/rules') }}
+  {% if not isNew %}<input type="hidden" name="ruleId" value="{{ rule.id }}">{% endif %}
+
+  {{ forms.textField({
+    first: true,
+    label: 'Name'|t('library'),
+    id: 'name',
+    name: 'name',
+    value: rule.name,
+    required: true,
+    autofocus: true,
+    errors: rule.getErrors('name'),
+  }) }}
+
+  {{ forms.lightswitchField({
+    label: 'Enabled'|t('library'),
+    id: 'enabled',
+    name: 'enabled',
+    on: rule.enabled,
+  }) }}
+
+  <h2>{{ 'When a file matches'|t('library') }}</h2>
+  <p class="light">{{ 'Leave a field blank to ignore it. A rule with everything blank matches every upload.'|t('library') }}</p>
+
+  {{ forms.selectField({
+    label: 'Volume'|t('library'),
+    id: 'volumeId',
+    name: 'volumeId',
+    value: rule.volumeId,
+    options: volumeOptions,
+    errors: rule.getErrors('volumeId'),
+  }) }}
+
+  {{ forms.textField({
+    label: 'Folder path'|t('library'),
+    instructions: 'Matched against the folder path inside the volume. `*` and `?` work — `brand/*` matches anything under brand.'|t('library'),
+    id: 'folderPattern',
+    name: 'folderPattern',
+    class: 'code',
+    value: rule.folderPattern,
+    placeholder: 'brand/*',
+    errors: rule.getErrors('folderPattern'),
+  }) }}
+
+  {{ forms.textField({
+    label: 'Filename'|t('library'),
+    instructions: '`*` and `?` work, and matching ignores case — `*-icon.svg`.'|t('library'),
+    id: 'filenamePattern',
+    name: 'filenamePattern',
+    class: 'code',
+    value: rule.filenamePattern,
+    placeholder: '*-icon.svg',
+    errors: rule.getErrors('filenamePattern'),
+  }) }}
+
+  {{ forms.checkboxSelectField({
+    label: 'File kinds'|t('library'),
+    id: 'kinds',
+    name: 'kinds',
+    values: rule.kinds,
+    options: kindOptions,
+    showAllOption: false,
+    errors: rule.getErrors('kinds'),
+  }) }}
+
+  <hr>
+  <h2>{{ 'Then'|t('library') }}</h2>
+
+  {% if collectionOptions|length %}
+    {{ forms.checkboxSelectField({
+      label: 'File into these collections'|t('library'),
+      id: 'collectionIds',
+      name: 'collectionIds',
+      values: rule.collectionIds,
+      options: collectionOptions,
+      showAllOption: false,
+      errors: rule.getErrors('collectionIds'),
+    }) }}
+  {% else %}
+    <p class="error">
+      {{ 'There are no collections yet.'|t('library') }}
+      <a href="{{ url('library/collections/new') }}">{{ 'Create one first'|t('library') }}</a>.
+    </p>
+  {% endif %}
+
+  {{ forms.selectField({
+    label: 'Alt text'|t('library'),
+    instructions: 'Only ever fills in an empty alt attribute. It never replaces one somebody wrote.'|t('library'),
+    id: 'altSource',
+    name: 'altSource',
+    value: rule.altSource,
+    options: altOptions,
+    errors: rule.getErrors('altSource'),
+  }) }}
+{% endblock %}

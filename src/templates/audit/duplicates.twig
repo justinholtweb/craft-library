@@ -1,0 +1,80 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Duplicates'|t('library') %}
+{% set crumbs = [
+  {label: 'Library'|t('library'), url: url('library/collections')},
+  {label: 'Audit'|t('library'), url: url('library/audit')},
+] %}
+
+{% block content %}
+  {% if pendingHashes > 0 %}
+    <p>
+      <span class="status-label status-label--yellow"><span class="status yellow"></span>{{ '{n} files still to hash — this list is incomplete.'|t('library', {n: pendingHashes}) }}</span>
+      <a href="{{ url('library/audit') }}">{{ 'Finish hashing'|t('library') }}</a>
+    </p>
+  {% endif %}
+
+  {% if groups|length %}
+    <p class="light">
+      {{ 'Each group holds files that are byte-for-byte identical. The oldest is treated as the original. Resolving a duplicate repoints every relation and recorded reference at the original, then moves the copy to the trash — so nothing that pointed at the copy breaks.'|t('library') }}
+    </p>
+
+    {% for group in groups %}
+      {% set original = group.assets|first %}
+      <div class="library-dupe-group">
+        <div>
+          <strong>{{ '{n} identical files'|t('library', {n: group.assets|length}) }}</strong>
+          {# Craft's own filter, so a 300-byte file does not read as "0 KB". #}
+          <span class="light">· {{ group.size|filesize }} {{ 'each'|t('library') }}</span>
+          <span class="light">· {{ 'wasting {size}'|t('library', {size: (group.size * (group.assets|length - 1))|filesize}) }}</span>
+        </div>
+
+        <div class="library-dupe-group__files">
+          {% for asset in group.assets %}
+            {% set isOriginal = asset.id == original.id %}
+            <div class="library-dupe-file {{ isOriginal ? 'library-dupe-file--original' : '' }}">
+              <div>
+                <a href="{{ asset.getCpEditUrl() }}">{{ asset.filename }}</a>
+                <div class="library-dupe-file__meta">
+                  {{ asset.getVolume().name }}{{ asset.folderPath ? ' / ' ~ asset.folderPath|trim('/') : '' }}<br>
+                  {{ 'Uploaded {date}'|t('library', {date: asset.dateCreated|date('short')}) }}<br>
+                  {{ '{n, plural, =0{used nowhere} =1{used in 1 place} other{used in # places}}'|t('library', {n: usageCounts[asset.id] ?? 0}) }}
+                </div>
+
+                {% if isOriginal %}
+                  <p class="library-dupe-file__meta"><strong>{{ 'Original'|t('library') }}</strong></p>
+                {% else %}
+                  <form method="post" accept-charset="UTF-8" style="margin-top:8px">
+                    {{ csrfInput() }}
+                    <input type="hidden" name="action" value="library/audit/resolve-duplicate">
+                    <input type="hidden" name="copyId" value="{{ asset.id }}">
+                    <input type="hidden" name="originalId" value="{{ original.id }}">
+                    <button type="submit" class="btn small"
+                            data-confirm="{{ 'Repoint everything at “{name}” and move this copy to the trash?'|t('library', {name: original.filename}) }}">
+                      {{ 'Merge into original'|t('library') }}
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="zilch">
+      <p>{{ 'No duplicates found.'|t('library') }}</p>
+      {% if pendingHashes == 0 %}
+        <p class="light">{{ 'Every file with a shared size has been hashed and none matched.'|t('library') }}</p>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% js %}
+$('button[data-confirm]').on('click', function (event) {
+  if (!confirm(this.getAttribute('data-confirm'))) {
+    event.preventDefault();
+  }
+});
+{% endjs %}

@@ -1,0 +1,57 @@
+{# Trigger for the cross-volume move action. #}
+{#
+  A disclosure menu, not a `.menubtn` menu. Craft 5 rebuilds a plain `.menubtn` menu as a
+  listbox of `<li><a>` options and throws any other markup away — a form inside one silently
+  disappears. `data-disclosure-trigger` is the variant that keeps arbitrary content.
+#}
+<button type="button" class="btn menubtn" aria-controls="library-menu-{{ triggerId }}"
+        aria-expanded="false" data-disclosure-trigger>{{ label }}</button>
+<div id="library-menu-{{ triggerId }}" class="menu menu--disclosure" data-disclosure-menu>
+  <div class="padded" data-library-panel="{{ triggerId }}" style="min-width:280px">
+    {% if volumes|length %}
+      <div class="field">
+        <div class="heading"><label>{{ 'Move to'|t('library') }}</label></div>
+        <div class="input">
+          <div class="select">
+            <select data-library-volume>
+              {% for volume in volumes %}
+                <option value="{{ volume.value }}">{{ volume.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="heading"><label>{{ 'Subfolder'|t('library') }}</label></div>
+        <div class="input">
+          <input type="text" class="text fullwidth" data-library-subfolder
+                 placeholder="{{ 'optional, created if missing'|t('library') }}">
+        </div>
+      </div>
+      <div class="buttons right">
+        <button type="button" class="btn submit" data-library-apply="{{ triggerId }}">{{ 'Move'|t('library') }}</button>
+      </div>
+    {% else %}
+      <p class="error">{{ 'You cannot save assets in any volume.'|t('library') }}</p>
+    {% endif %}
+  </div>
+</div>
+
+{% js %}
+Craft.LibraryActionTrigger({
+  type: {{ type|json_encode|raw }},
+  triggerId: {{ triggerId|json_encode|raw }},
+  gather: ($panel) => {
+    const volumeId = $panel.find('[data-library-volume]').val();
+
+    if (!volumeId) {
+      return false;
+    }
+
+    return {
+      volumeId: parseInt(volumeId, 10),
+      subfolder: $panel.find('[data-library-subfolder]').val() || '',
+    };
+  },
+});
+{% endjs %}
