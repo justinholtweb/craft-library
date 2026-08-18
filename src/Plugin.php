@@ -9,6 +9,8 @@ use craft\base\conditions\BaseCondition;
 use craft\base\Element;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
+use craft\db\Query;
+use craft\db\Table as CraftTable;
 use craft\elements\Asset;
 use craft\elements\conditions\assets\AssetCondition;
 use craft\events\DefineHtmlEvent;
@@ -77,6 +79,13 @@ class Plugin extends BasePlugin
 
     /** Log category used by everything in the plugin. */
     public const LOG_CATEGORY = 'library';
+
+    /**
+     * @var array<int,true> Asset IDs that are moving out of a temporary uploads folder in this
+     * request, and so are arriving in the library for the first time.
+     * @see registerUploadHandling()
+     */
+    private array $arrivingAssetIds = [];
 
     public string $schemaVersion = '1.0.0';
     public bool $hasCpSection = true;
@@ -511,34 +520,101 @@ class Plugin extends BasePlugin
         );
     }
 
-    /** Runs upload rules over assets as they are created. */
+    /**
+     * Runs upload rules over assets as they arrive in the library.
+     *
+     * "Arrives" is not the same as "is created". A file uploaded straight into a volume from the
+     * assets index is created there, and `isNew` catches it. A file uploaded through an asset field
+     * — by far the more common path — is created in the *temporary uploads* folder, which has no
+     * volume, and is only moved into a real volume when the entry is saved. That move is a save of
+     * an existing element, so `isNew` is false and rules based on it never fire at all.
+     *
+     * So the arrival is detected on the way in: before a save, an asset that has a volume now but
+     * had none in the database is one that is landing in the library for the first time.
+     */
     private function registerUploadHandling(): void
     {
+        Event::on(
+            Elements::class,
+            Elements::EVENT_BEFORE_SAVE_ELEMENT,
+            function(ElementEvent $event) {
+                $element = $event->element;
+
+                // Deliberately *not* checking `volumeId` here. A move fires two saves: the first
+                // still reports the old (null) volume with the target in `newFolderId`, and by the
+                // second the row has already been updated — so an in-memory check misses on one and
+                // the stored value has changed by the other. What matters is only whether the row
+                // said "no volume" when this save began.
+                if (
+                    $event->isNew ||
+                    !$element instanceof Asset ||
+                    $element->id === null ||
+                    $element->getIsDraft() ||
+                    $element->getIsRevision() ||
+                    $element->propagating ||
+                    !$this->isPro() ||
+                    !$this->getSettings()->applyUploadRules ||
+                    isset($this->arrivingAssetIds[(int)$element->id])
+                ) {
+                    return;
+                }
+
+                // One indexed lookup, and only for an asset that already has an ID, is not a draft
+                // and is not propagating — so this is off everybody else's save path.
+                $previousVolumeId = (new Query())
+                    ->select(['volumeId'])
+                    ->from(CraftTable::ASSETS)
+                    ->where(['id' => $element->id])
+                    ->scalar();
+
+                if ($previousVolumeId === null || $previousVolumeId === false || $previousVolumeId === '') {
+                    $this->arrivingAssetIds[(int)$element->id] = true;
+                }
+            },
+        );
+
         Event::on(
             Elements::class,
             Elements::EVENT_AFTER_SAVE_ELEMENT,
             function(ElementEvent $event) {
                 $element = $event->element;
 
-                if (!$element instanceof Asset || !$event->isNew) {
+                if (!$this->shouldApplyRules($element, $event->isNew)) {
                     return;
                 }
 
-                if ($element->getIsDraft() || $element->getIsRevision() || $element->propagating) {
+                $arriving = isset($this->arrivingAssetIds[(int)$element->id]);
+
+                if (!$event->isNew && !$arriving) {
                     return;
                 }
 
-                // A file still in the temporary uploads folder is not in the library yet, and
-                // filing it into collections would leave rows behind for something the editor may
-                // never actually save. Temp folders are the ones with no volume — see
-                // Assets::getUserTemporaryUploadFolder(), which looks them up by `volumeId: :empty:`.
-                if ($element->volumeId === null) {
-                    return;
-                }
+                unset($this->arrivingAssetIds[(int)$element->id]);
 
                 $this->rules->applyToAsset($element);
             },
         );
+    }
+
+    /**
+     * Whether upload rules should run for a saved asset.
+     *
+     * A file still sitting in the temporary uploads folder is not in the library yet, and filing it
+     * would leave rows behind for something the editor may never save. Temp folders are the ones
+     * with no volume — see `Assets::getUserTemporaryUploadFolder()`, which finds them by
+     * `volumeId: ':empty:'`.
+     */
+    private function shouldApplyRules(mixed $element, bool $isNew): bool
+    {
+        if (!$element instanceof Asset || $element->id === null || $element->volumeId === null) {
+            return false;
+        }
+
+        if ($element->getIsDraft() || $element->getIsRevision() || $element->propagating) {
+            return false;
+        }
+
+        return $this->isPro() && $this->getSettings()->applyUploadRules;
     }
 
     /** Keeps the reference-tag half of usage current as content is saved. */

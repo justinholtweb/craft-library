@@ -77,7 +77,7 @@ No local PHP on this Mac. Everything runs inside the plugin-testing container:
 
 ```sh
 docker exec -w /var/www/html ddev-plugin-testing-web \
-  php /var/www/craft-library/tests/integration/checks.php   # 77 checks
+  php /var/www/craft-library/tests/integration/checks.php   # 78 checks
 ```
 
 The checks switch the plugin to Pro for the run and restore the original edition afterwards. They

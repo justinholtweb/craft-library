@@ -164,6 +164,14 @@ delete collections`, `Bulk edit assets` and `Run library audits`.
 Changing an asset's collections also requires permission to edit that asset — otherwise the panel
 would be a way around volume permissions.
 
+## Known limits
+
+Collection sources carry a complete asset ID list, which is what makes them honest — the source
+shows exactly what the collection holds, always. The cost is that building the sidebar reads the
+membership table, so on a library with hundreds of thousands of filed assets the asset index will
+get heavy. Turn **Show collections in the asset index** off and use the Collection filter instead;
+it is enforced entirely in SQL and does not scale with the number of assets.
+
 ## What Library does not do
 
 - **It does not move your files.** Collections are metadata; the folder an asset lives in is Craft's
@@ -176,7 +184,7 @@ would be a way around volume permissions.
 
 ```sh
 docker exec -w /var/www/html ddev-plugin-testing-web \
-  php /var/www/craft-library/tests/integration/checks.php   # 77 checks
+  php /var/www/craft-library/tests/integration/checks.php   # 78 checks
 ```
 
 The checks run against a real Craft install: real element saves, real files on a real volume, the

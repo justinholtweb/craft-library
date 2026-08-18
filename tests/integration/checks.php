@@ -1086,6 +1086,62 @@ try {
         }
     });
 
+    check('a rule fires for a file uploaded through an asset field, not just a direct upload', function() use ($volume, $photos, $testFolder) {
+        // The common path: Craft creates the asset in the *temporary uploads* folder, which has no
+        // volume, and only moves it into a real one when the entry is saved. That move is a save of
+        // an existing element, so anything keyed on `isNew` never runs — which meant upload rules
+        // silently did nothing for most of the uploads on a real site.
+        $rule = new UploadRule([
+            'name' => 'Libcheck field-upload rule ' . uniqid(),
+            'filenamePattern' => 'libcheck-fieldupload-*',
+            'collectionIds' => [$photos->id],
+        ]);
+
+        if (!Plugin::getInstance()->rules->saveRule($rule)) {
+            return 'the rule would not save: ' . implode(' ', $rule->getFirstErrors());
+        }
+
+        try {
+            $assetsService = Craft::$app->getAssets();
+            $tempFolder = $assetsService->getUserTemporaryUploadFolder();
+
+            $tmp = Craft::$app->getPath()->getTempPath() . '/' . uniqid('libcheckfield', true) . '.png';
+            $image = imagecreatetruecolor(46, 46);
+            imagefill($image, 0, 0, imagecolorallocate($image, 46, 46, 46));
+            imagepng($image, $tmp);
+            imagedestroy($image);
+
+            $asset = new Asset();
+            $asset->tempFilePath = $tmp;
+            $asset->setFilename('libcheck-fieldupload-hit.png');
+            $asset->newFolderId = $tempFolder->id;
+            $asset->setVolumeId($tempFolder->volumeId);
+            $asset->setScenario(Asset::SCENARIO_CREATE);
+
+            if (!Craft::$app->getElements()->saveElement($asset)) {
+                return 'could not create the temporary upload: ' . implode(' ', $asset->getFirstErrors());
+            }
+
+            global $created;
+            $created['assets'][] = $asset;
+
+            // Nothing should have been filed while it is still a temporary upload.
+            if (Plugin::getInstance()->membership->getCollectionIdsForAsset((int)$asset->id) !== []) {
+                return 'a file still in the temporary uploads folder was filed into a collection';
+            }
+
+            // Now the entry save moves it into a real volume.
+            $assetsService->moveAsset($asset, $testFolder);
+
+            $ids = Plugin::getInstance()->membership->getCollectionIdsForAsset((int)$asset->id);
+
+            return in_array($photos->id, $ids, true)
+                ?: 'after the move the asset was in ' . (implode(',', $ids) ?: 'no collection');
+        } finally {
+            Plugin::getInstance()->rules->deleteRuleById((int)$rule->id);
+        }
+    });
+
     check('an upload rule can seed alt text', function() use ($volume, $photos) {
         $rule = new UploadRule([
             'name' => 'Libcheck alt rule ' . uniqid(),
