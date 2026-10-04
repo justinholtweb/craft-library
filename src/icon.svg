@@ -1,12 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Three books on a shelf: a library, and a stack of things filed rather than piled. -->
-  <g fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
-    <rect x="14" y="20" width="20" height="58" rx="3"/>
-    <rect x="40" y="30" width="20" height="48" rx="3"/>
-    <path d="M66 78 L66 36 L86 30 L86 72 Z"/>
-    <path d="M8 86 L92 86"/>
-    <path d="M14 34 L34 34"/>
-    <path d="M40 44 L60 44"/>
-    <path d="M66 50 L86 44"/>
-  </g>
+  <!-- Rounded tile: 22.44% radius, matching Appleseed's rx="35" on a 156px square -->
+  <rect x="0" y="0" width="100" height="100" rx="22.44" fill="#438F93"/>
+  <!-- Five books on a shelf under a reading-room arch, redrawn from Justin's icon.jpg (kept at
+       promos/assets/icon-source.jpg). One evenodd path: the bands and label windows are holes that
+       show the tile. src/icon-mask.svg is this same path. -->
+  <path fill="#FEFEFE" fill-rule="evenodd" d="M15.39 40.08A36 36 0 0 1 84.61 40.08L79.32 41.59A30.5 30.5 0 0 0 20.68 41.59ZM18 44 27.5 44 27.5 78 18 78ZM19.7 47.5 25.8 47.5 25.8 49.5 19.7 49.5ZM19.7 71.5 25.8 71.5 25.8 73.5 19.7 73.5ZM30.5 35 39.5 35 39.5 78 30.5 78ZM33 39 37 39 37 50 33 50ZM32.2 71.5 37.8 71.5 37.8 73.5 32.2 73.5ZM42 29 51 29 51 78 42 78ZM43.7 32.5 49.3 32.5 49.3 34.5 43.7 34.5ZM43.7 36.5 49.3 36.5 49.3 38.5 43.7 38.5ZM43.7 71.5 49.3 71.5 49.3 73.5 43.7 73.5ZM53.5 37 62.5 37 62.5 78 53.5 78ZM55.2 40.5 60.8 40.5 60.8 42.5 55.2 42.5ZM56 62 60 62 60 68 56 68ZM73.27 42.87 82.07 44.74 75 78 66.2 76.13ZM74.2 46.65 79.68 47.81 79.26 49.77 73.79 48.61ZM69.21 70.12 74.69 71.29 74.27 73.24 68.8 72.08ZM14 80.5 86 80.5 86 85.5 14 85.5Z"/>
 </svg>

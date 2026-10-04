@@ -68,6 +68,17 @@ missing-alt uses native `kind` + `hasAlt`. Unused and Duplicates are deliberatel
 - **Drafts and revisions must be excluded from usage**, in the count, the list, the unused query and
   the condition rule *alike*. They started as four pieces of SQL and immediately disagreed. One
   definition now: `Usage::relationExistsQuery()` / `refExistsQuery()`.
+- **Craft 5 reads alt text only from `assets_sites.alt`.** `AssetQuery` selects `assets.alt` and then
+  overwrites it with the per-site value, so a write to `assets.alt` is silently invisible. Upload-rule
+  alt seeding did exactly that and never worked. Write `assets_sites` for the asset's site.
+- **`editable()` / `savable()` return nothing on a console request** (no user — the query aborts). Scope
+  by permission in the *web controller*, never in a service the console commands share.
+- **`volumeId(['not 1', 'not 2'])` excludes nothing** — separate negations are OR-glued. Use
+  `['not', 1, 2]`. `Alt::imagesQuery()` is the one place the excluded-volumes filter lives.
+- **Never trust a pairing from a POST body for a repoint.** `resolve-duplicate` moves every relation on
+  the site, so `Duplicates::areDuplicates()` re-checks the hashes server-side.
+- **Two copies of `checks.php` running at once break each other** (shared temp folder, searchindex
+  deadlocks). If a run fails with FK/deadlock errors, check `ps` in the container and rerun alone.
 
 See `[[craft-plugin-gotchas]]` in the shared memory for family-wide traps.
 
@@ -77,7 +88,7 @@ No local PHP on this Mac. Everything runs inside the plugin-testing container:
 
 ```sh
 docker exec -w /var/www/html ddev-plugin-testing-web \
-  php /var/www/craft-library/tests/integration/checks.php   # 78 checks
+  php /var/www/craft-library/tests/integration/checks.php   # 82 checks
 ```
 
 The checks switch the plugin to Pro for the run and restore the original edition afterwards. They

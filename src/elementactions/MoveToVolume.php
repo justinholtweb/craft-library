@@ -121,6 +121,16 @@ class MoveToVolume extends ElementAction
             return false;
         }
 
+        // Moving a file out of a volume removes it from there, so Craft's own move action asks for
+        // delete permission on the source volume as well as save permission on the target.
+        $elementsService = Craft::$app->getElements();
+        $assets = array_values(array_filter($assets, fn($asset) => $elementsService->canDelete($asset)));
+
+        if (!$assets) {
+            $this->setMessage(Craft::t('library', 'You are not allowed to move these assets out of their volume.'));
+            return false;
+        }
+
         $result = Plugin::getInstance()->renamer->move($assets, $folder);
 
         if ($result['failed'] > 0) {
@@ -160,7 +170,9 @@ class MoveToVolume extends ElementAction
         foreach (explode('/', $subfolder) as $segment) {
             $segment = \craft\helpers\Assets::prepareAssetName($segment, false);
 
-            if ($segment === '') {
+            // `.` and `..` survive prepareAssetName(), and a folder record named `..` would alias
+            // its parent directory. Hidden-file names have no business in a path typed here either.
+            if ($segment === '' || str_starts_with($segment, '.')) {
                 continue;
             }
 

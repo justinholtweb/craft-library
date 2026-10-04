@@ -1,5 +1,6 @@
 {% extends '_layouts/cp.twig' %}
 
+{% set selectedSubnavItem = 'audit' %}
 {% set title = 'Duplicates'|t('library') %}
 {% set crumbs = [
   {label: 'Library'|t('library'), url: url('library/collections')},
@@ -9,7 +10,7 @@
 {% block content %}
   {% if pendingHashes > 0 %}
     <p>
-      <span class="status-label status-label--yellow"><span class="status yellow"></span>{{ '{n} files still to hash — this list is incomplete.'|t('library', {n: pendingHashes}) }}</span>
+      <span class="status-label yellow"><span class="status yellow"></span><span class="status-label-text">{{ '{n} files still to hash — this list is incomplete.'|t('library', {n: pendingHashes}) }}</span></span>
       <a href="{{ url('library/audit') }}">{{ 'Finish hashing'|t('library') }}</a>
     </p>
   {% endif %}
@@ -25,7 +26,7 @@
         <div>
           <strong>{{ '{n} identical files'|t('library', {n: group.assets|length}) }}</strong>
           {# Craft's own filter, so a 300-byte file does not read as "0 KB". #}
-          <span class="light">· {{ group.size|filesize }} {{ 'each'|t('library') }}</span>
+          <span class="light">· {{ '{size} each'|t('library', {size: group.size|filesize}) }}</span>
           <span class="light">· {{ 'wasting {size}'|t('library', {size: (group.size * (group.assets|length - 1))|filesize}) }}</span>
         </div>
 
@@ -44,7 +45,7 @@
                 {% if isOriginal %}
                   <p class="library-dupe-file__meta"><strong>{{ 'Original'|t('library') }}</strong></p>
                 {% else %}
-                  <form method="post" accept-charset="UTF-8" style="margin-top:8px">
+                  <form method="post" accept-charset="UTF-8" class="library-dupe-file__form">
                     {{ csrfInput() }}
                     <input type="hidden" name="action" value="library/audit/resolve-duplicate">
                     <input type="hidden" name="copyId" value="{{ asset.id }}">

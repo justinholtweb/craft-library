@@ -11,6 +11,7 @@ use justinholtweb\library\models\Settings;
 use justinholtweb\library\services\Alt;
 use justinholtweb\library\Plugin;
 use justinholtweb\library\web\assets\cp\CpAsset;
+use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -66,7 +67,7 @@ class AuditController extends Controller
 
         return $this->renderTemplate('library/audit/unused', [
             'plugin' => $plugin,
-            'assets' => $pageIds ? Asset::find()->id($pageIds)->status(null)->all() : [],
+            'assets' => $pageIds ? Asset::find()->id($pageIds)->status(null)->editable()->all() : [],
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
@@ -78,6 +79,24 @@ class AuditController extends Controller
     {
         $plugin = Plugin::getInstance();
         $groups = $plugin->duplicates->getDuplicateGroups(50);
+
+        // Only files the reader can view. Scoped here rather than in the service, which the console
+        // command also uses and where there is no user to scope by. A group left with fewer than
+        // two visible copies is dropped, so nobody learns a file exists in a volume they cannot see.
+        $elementsService = Craft::$app->getElements();
+
+        foreach ($groups as $i => $group) {
+            $group['assets'] = array_values(array_filter($group['assets'], fn(Asset $asset) => $elementsService->canView($asset)));
+
+            if (count($group['assets']) < 2) {
+                unset($groups[$i]);
+                continue;
+            }
+
+            $groups[$i] = $group;
+        }
+
+        $groups = array_values($groups);
 
         // Usage counts for every asset on the page in one query rather than one per file. The page
         // shows a count beside each copy, so asking per asset is a hundred queries on a busy library.
@@ -104,7 +123,7 @@ class AuditController extends Controller
         $page = max(1, (int)$this->request->getQueryParam('page', 1));
         $perPage = 50;
 
-        $query = $plugin->alt->missingAltQuery($siteId);
+        $query = $plugin->alt->missingAltQuery($siteId)->editable();
         $total = (int)$query->count();
         $assets = (clone $query)->offset(($page - 1) * $perPage)->limit($perPage)->all();
 
@@ -172,6 +191,12 @@ class AuditController extends Controller
             throw new ForbiddenHttpException('You are not allowed to resolve this duplicate.');
         }
 
+        // Never trust the pairing from the request: without this, any two asset IDs would do, and
+        // a repoint swaps every use of one file for the other across the whole site.
+        if (!Plugin::getInstance()->duplicates->areDuplicates($copy, $original)) {
+            throw new BadRequestHttpException('These assets are not known duplicates of each other.');
+        }
+
         $result = Plugin::getInstance()->duplicates->repoint($copy, $original);
 
         if ($delete) {
@@ -207,7 +232,7 @@ class AuditController extends Controller
         // undescribed images is not something to attempt inside one web request — the console
         // command exists for that, and the flash message says so.
         $limit = 200;
-        $assets = $plugin->alt->missingAltQuery($siteId)->limit($limit)->all();
+        $assets = $plugin->alt->missingAltQuery($siteId)->savable()->limit($limit)->all();
 
         $changed = $plugin->alt->fill($assets, $source, false, $siteId);
         $remaining = $plugin->alt->getMissingAltCount($siteId);

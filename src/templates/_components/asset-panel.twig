@@ -9,7 +9,7 @@
         collections: collections,
         selectedIds: selectedIds,
       } only %}
-      <p class="light" style="margin-top:6px" data-library-status></p>
+      <p class="light library-panel__status" role="status" aria-live="polite" data-library-status></p>
     {% elseif selectedIds|length %}
       {% include 'library/_components/chips' with {
         collections: craft.library.collectionsFor(asset),
@@ -48,7 +48,7 @@
         {% endif %}
       {% else %}
         <p>
-          <span class="status-label status-label--red"><span class="status red"></span>{{ 'Not used anywhere'|t('library') }}</span>
+          <span class="status-label red"><span class="status red"></span><span class="status-label-text">{{ 'Not used anywhere'|t('library') }}</span></span>
         </p>
         <p class="light">
           {{ 'Nothing relates to this file. Reference tags typed into text are only known after a scan.'|t('library') }}

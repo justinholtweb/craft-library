@@ -179,25 +179,59 @@
     });
 
     const panelSelector = '[data-library-panel="' + triggerId + '"]';
+    const menuSelector = '[id="library-menu-' + triggerId + '"]';
 
-    $(document).on('click', '[data-library-apply="' + triggerId + '"]', function (event) {
-      event.preventDefault();
+    // The disclosure menu that belongs to *this* trigger. Garnish reparents it onto <body> and
+    // never removes it when the trigger is destroyed, so after a source switch there can be several
+    // panels with the same id on the page, and only the live trigger knows which one is current.
+    function liveMenu() {
+      return trigger.$trigger.find('[data-disclosure-trigger]').data('disclosureMenu') || null;
+    }
 
-      const $panel = $(panelSelector);
-      const params = options.gather($panel);
+    // Drops menus left behind by triggers Craft has already torn down: they carry duplicate ids
+    // (which breaks label/for) and would otherwise be read instead of the current panel.
+    function removeOrphans() {
+      const live = liveMenu();
+      $(menuSelector).each(function () {
+        const menu = $(this).data('disclosureMenu');
+        const orphaned = live
+          ? menu !== live
+          : menu && !document.body.contains(menu.$trigger[0]);
+        if (orphaned) {
+          $(this).remove();
+        }
+      });
+    }
 
-      if (params === false) {
-        return;
-      }
+    removeOrphans();
 
-      // Close the menu before the index reloads underneath it.
-      const menuBtn = trigger.$trigger.find('.menubtn').data('menubtn');
-      if (menuBtn && menuBtn.menu) {
-        menuBtn.menu.hide();
-      }
+    // Namespaced and unbound first: Craft re-renders the triggers (and re-runs this) on every view
+    // update, and a plain .on() would stack one handler per source switch — so a single click on
+    // Apply ran the action once for every time the editor had changed source.
+    const eventName = 'click.library-' + triggerId;
 
-      trigger.elementIndex.submitAction(type, params);
-    });
+    $(document)
+      .off(eventName)
+      .on(eventName, '[data-library-apply="' + triggerId + '"]', function (event) {
+        event.preventDefault();
+
+        removeOrphans();
+
+        const menu = liveMenu();
+        const $panel = menu ? menu.$container.find(panelSelector) : $(panelSelector).last();
+        const params = options.gather($panel);
+
+        if (params === false) {
+          return;
+        }
+
+        // Close the menu before the index reloads underneath it.
+        if (menu) {
+          menu.hide();
+        }
+
+        trigger.elementIndex.submitAction(type, params);
+      });
 
     return trigger;
   }

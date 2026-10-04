@@ -3,6 +3,7 @@
 
 {% set title = isNew ? 'New rule'|t('library') : rule.name %}
 {% set fullPageForm = true %}
+{% set selectedSubnavItem = 'rules' %}
 {% set crumbs = [
   {label: 'Library'|t('library'), url: url('library/collections')},
   {label: 'Upload rules'|t('library'), url: url('library/rules')},
@@ -89,10 +90,11 @@
       errors: rule.getErrors('collectionIds'),
     }) }}
   {% else %}
-    <p class="error">
-      {{ 'There are no collections yet.'|t('library') }}
-      <a href="{{ url('library/collections/new') }}">{{ 'Create one first'|t('library') }}</a>.
-    </p>
+    {{ forms.field({
+      label: 'File into these collections'|t('library'),
+      id: 'collectionIds',
+      tip: 'There are no collections yet. [Create one first]({url}).'|t('library', {url: url('library/collections/new')}),
+    }, '') }}
   {% endif %}
 
   {{ forms.selectField({

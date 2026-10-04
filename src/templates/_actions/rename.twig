@@ -9,10 +9,11 @@
 <div id="library-menu-{{ triggerId }}" class="menu menu--disclosure" data-disclosure-menu>
   <div class="padded" data-library-panel="{{ triggerId }}" style="max-width:420px">
     <div class="field">
-      <div class="heading"><label>{{ 'Filename pattern'|t('library') }}</label></div>
+      <div class="heading"><label for="library-pattern-{{ triggerId }}">{{ 'Filename pattern'|t('library') }}</label></div>
       <div class="input">
-        <input type="text" class="text fullwidth code" data-library-pattern value="{basename}.{ext}">
-        <ul class="library-token-list light">
+        <input type="text" class="text fullwidth code" id="library-pattern-{{ triggerId }}" data-library-pattern value="{basename}.{ext}"
+               aria-describedby="library-pattern-{{ triggerId }}-tokens">
+        <ul class="library-token-list light" id="library-pattern-{{ triggerId }}-tokens">
           {% for token, description in tokens %}
             <li><code>{{ token }}</code> — {{ description }}</li>
           {% endfor %}
@@ -21,14 +22,12 @@
     </div>
     <div class="field">
       <div class="input">
-        <label>
-          <input type="checkbox" data-library-preview checked>
-          {{ 'Preview only — do not rename anything yet'|t('library') }}
-        </label>
+        <input type="checkbox" class="checkbox" id="library-preview-{{ triggerId }}" data-library-preview checked>
+        <label for="library-preview-{{ triggerId }}">{{ 'Preview only — do not rename anything yet'|t('library') }}</label>
       </div>
     </div>
     <div class="buttons right">
-      <button type="button" class="btn submit" data-library-apply="{{ triggerId }}">{{ 'Run'|t('library') }}</button>
+      <button type="button" class="btn submit" data-library-apply="{{ triggerId }}">{{ 'Rename files'|t('library') }}</button>
     </div>
   </div>
 </div>

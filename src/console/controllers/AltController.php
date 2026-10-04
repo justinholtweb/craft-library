@@ -111,17 +111,18 @@ class AltController extends Controller
         }
 
         $changed = 0;
+        $offset = 0;
         $batch = 100;
 
         // Paged by re-querying rather than by offset: every save takes an image out of the
         // "missing alt" set, so an offset would step over the ones that shuffled down into it.
         while (true) {
             $assets = $this->overwrite
-                ? \craft\elements\Asset::find()
-                    ->siteId($siteId)
-                    ->kind(\craft\elements\Asset::KIND_IMAGE)
-                    ->status(null)
-                    ->offset($changed)
+                // Overwriting does not shrink the set, so this one pages by offset — and honours the
+                // excluded volumes exactly as the audit does.
+                ? $alt->imagesQuery($siteId)
+                    ->orderBy(['elements.id' => SORT_ASC])
+                    ->offset($offset)
                     ->limit($batch)
                     ->all()
                 : $alt->missingAltQuery($siteId)->limit($batch)->all();
@@ -131,7 +132,8 @@ class AltController extends Controller
             }
 
             $done = $alt->fill($assets, $this->source, $this->overwrite, $siteId);
-            $changed += $this->overwrite ? count($assets) : $done;
+            $changed += $done;
+            $offset += count($assets);
 
             if ($total !== null) {
                 Console::updateProgress(min($changed, $total), $total);

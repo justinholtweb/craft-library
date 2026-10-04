@@ -139,7 +139,9 @@ class Rules extends Component
                     $collectionIds[(int)$id] = true;
                 }
 
-                if ($altSource === null && $rule->altSource !== null && $rule->altSource !== Settings::ALT_SOURCE_NONE) {
+                // First matching rule with an opinion wins — and "leave alone" (`none`) is an
+                // opinion. Only a rule with no alt source at all (null) defers to the next one.
+                if ($altSource === null && $rule->altSource !== null && $rule->altSource !== '') {
                     $altSource = $rule->altSource;
                 }
             }
@@ -162,7 +164,12 @@ class Rules extends Component
             if ($alt !== null) {
                 // Written straight to the row. This runs inside the asset's own save, and calling
                 // saveElement() on the element being saved is how you get infinite recursion.
-                Db::update(\craft\db\Table::ASSETS, ['alt' => $alt], ['id' => $asset->id], updateTimestamp: false);
+                // `assets_sites` is the only place Craft 5 reads alt text from — `assets.alt` is a
+                // leftover that AssetQuery selects and then overwrites with the per-site value, so a
+                // write there is silently invisible. One site only, like the bulk action: alt text
+                // is translatable and this English string must not land on every other site.
+                $row = ['assetId' => $asset->id, 'siteId' => $asset->siteId, 'alt' => $alt];
+                Db::upsert(\craft\db\Table::ASSETS_SITES, $row, $row, updateTimestamp: false);
                 $asset->alt = $alt;
                 $applied['alt'] = true;
             }

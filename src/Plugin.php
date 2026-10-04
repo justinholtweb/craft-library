@@ -156,14 +156,19 @@ class Plugin extends BasePlugin
                 'label' => Craft::t('library', 'Audit'),
                 'url' => 'library/audit',
             ];
+        }
 
+        // Gated on the same permission RulesController requires, or the link is a 403.
+        if ($this->isPro() && $user->checkPermission(self::PERMISSION_MANAGE_COLLECTIONS)) {
             $item['subnav']['rules'] = [
                 'label' => Craft::t('library', 'Upload rules'),
                 'url' => 'library/rules',
             ];
         }
 
-        if ($user->getIsAdmin()) {
+        // Plugin settings are project config, and with allowAdminChanges off the settings screen
+        // is a 403 — so on production the link would only lead to an error.
+        if ($user->getIsAdmin() && Craft::$app->getConfig()->getGeneral()->allowAdminChanges) {
             $item['subnav']['settings'] = [
                 'label' => Craft::t('library', 'Settings'),
                 'url' => 'settings/plugins/library',
@@ -316,13 +321,11 @@ class Plugin extends BasePlugin
         }
 
         $showCounts = $this->getSettings()->showCollectionCounts;
-        $counts = $showCounts ? $collections->getAssetCounts() : [];
-
         // One query for every collection's membership, not one per collection. This runs on every
         // asset index render and every asset field modal render.
         $memberships = $this->membership->getAllMemberships();
 
-        $build = function(array $branch) use (&$build, $collections, $showCounts, $counts, $memberships): array {
+        $build = function(array $branch) use (&$build, $collections, $showCounts, $memberships): array {
             $sources = [];
 
             foreach ($branch as $collection) {
@@ -342,7 +345,9 @@ class Plugin extends BasePlugin
                     'hasThumbs' => true,
                     // `id(false)` rather than `id([])`: an empty array is no filter at all in Craft's
                     // param syntax, so an empty collection would list the entire library.
-                    'criteria' => ['id' => $ids ?: false],
+                    // `editable` scopes to volumes the user can view. Craft hides its own volume sources
+                    // per volume; a collection spans volumes, so it has to ask for the scoping itself.
+                    'criteria' => ['id' => $ids ?: false, 'editable' => true],
                     'defaultSort' => ['dateCreated', 'desc'],
                     'data' => [
                         'library-collection' => $collection->uid,
@@ -357,7 +362,9 @@ class Plugin extends BasePlugin
                 }
 
                 if ($showCounts) {
-                    $source['badgeCount'] = $collections->getAssetCount((int)$collection->id);
+                    // The ID list is already de-duplicated across the subtree, so its size is
+                    // exactly what the source will list.
+                    $source['badgeCount'] = count($ids);
                     $source['badgeLabel'] = Craft::t('library', 'Assets in this collection');
                 }
 
@@ -389,7 +396,7 @@ class Plugin extends BasePlugin
                 'key' => 'library:missing-alt',
                 'label' => Craft::t('library', 'Missing alt text'),
                 'hasThumbs' => true,
-                'criteria' => ['kind' => Asset::KIND_IMAGE, 'hasAlt' => false],
+                'criteria' => ['kind' => Asset::KIND_IMAGE, 'hasAlt' => false, 'editable' => true],
                 'defaultSort' => ['dateCreated', 'desc'],
                 'data' => ['can-upload' => false],
             ],
@@ -477,8 +484,8 @@ class Plugin extends BasePlugin
         $count = $this->usage->getCountForAsset((int)$asset->id);
 
         if ($count === 0) {
-            return '<span class="status-label status-label--red"><span class="status red"></span>' .
-                Craft::t('library', 'Unused') . '</span>';
+            return '<span class="status-label red"><span class="status red"></span><span class="status-label-text">' .
+                Craft::t('library', 'Unused') . '</span></span>';
         }
 
         return '<span class="light">' . Craft::t('library', '{n, plural, =1{1 place} other{# places}}', ['n' => $count]) . '</span>';

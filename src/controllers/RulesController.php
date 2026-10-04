@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace justinholtweb\library\controllers;
 
 use Craft;
-use craft\elements\Asset;
 use craft\helpers\Assets as AssetsHelper;
 use craft\web\Controller;
+use justinholtweb\library\jobs\BackfillRule;
 use justinholtweb\library\models\Settings;
 use justinholtweb\library\models\UploadRule;
 use justinholtweb\library\Plugin;
@@ -95,6 +95,8 @@ class RulesController extends Controller
             'kindOptions' => $kindOptions,
             'collectionOptions' => $collectionOptions,
             'altOptions' => [
+                // Empty is stored as null: "no opinion", so the default from the settings applies.
+                ['value' => '', 'label' => Craft::t('library', 'Use the default from settings')],
                 ['value' => Settings::ALT_SOURCE_NONE, 'label' => Craft::t('library', 'Leave alone')],
                 ['value' => Settings::ALT_SOURCE_FILENAME, 'label' => Craft::t('library', 'From the filename')],
                 ['value' => Settings::ALT_SOURCE_TITLE, 'label' => Craft::t('library', 'From the title')],
@@ -179,38 +181,13 @@ class RulesController extends Controller
             throw new NotFoundHttpException('Rule not found.');
         }
 
-        // Capped, and the flash says what is left. A rule matching every asset on a library of
-        // 50,000 files is not a web request.
-        $limit = 500;
-        $query = Asset::find()->status(null)->limit($limit);
+        Craft::$app->getQueue()->push(new BackfillRule([
+            'ruleId' => (int)$rule->id,
+            'userId' => Craft::$app->getUser()->getId(),
+        ]));
 
-        if ($rule->volumeId !== null) {
-            $query->volumeId($rule->volumeId);
-        }
-
-        if ($rule->kinds) {
-            $query->kind($rule->kinds);
-        }
-
-        $matched = 0;
-        $assigned = 0;
-
-        foreach ($query->all() as $asset) {
-            if (!$rule->matches($asset)) {
-                continue;
-            }
-
-            $matched++;
-
-            if ($rule->collectionIds) {
-                $assigned += $plugin->membership->assign([(int)$asset->id], $rule->collectionIds);
-            }
-        }
-
-        $this->setSuccessFlash(Craft::t('library', 'Checked up to {limit} assets: {matched} matched, {assigned} newly filed.', [
-            'limit' => $limit,
-            'matched' => $matched,
-            'assigned' => $assigned,
+        $this->setSuccessFlash(Craft::t('library', 'Applying “{name}” to existing assets in the background.', [
+            'name' => $rule->name,
         ]));
 
         return $this->redirect('library/rules');

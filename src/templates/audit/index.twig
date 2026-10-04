@@ -1,5 +1,7 @@
 {% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
 
+{% set selectedSubnavItem = 'audit' %}
 {% set title = 'Audit'|t('library') %}
 {% set crumbs = [{label: 'Library'|t('library'), url: url('library/collections')}] %}
 
@@ -51,16 +53,18 @@
 
   {% if pendingHashes > 0 %}
     <p>
-      <span class="status-label status-label--yellow"><span class="status yellow"></span>{{ '{n} files still to hash'|t('library', {n: pendingHashes}) }}</span>
+      <span class="status-label yellow"><span class="status yellow"></span><span class="status-label-text">{{ '{n} files still to hash'|t('library', {n: pendingHashes}) }}</span></span>
     </p>
     <p>
-      <button type="button" class="btn" data-library-hash-run data-pending="{{ pendingHashes }}">
-        {{ 'Hash now'|t('library') }}
-      </button>
-      <span class="light" data-library-hash-progress></span>
+      {{ forms.button({
+        label: 'Hash now'|t('library'),
+        spinner: true,
+        attributes: {data: {'library-hash-run': true, pending: pendingHashes}},
+      }) }}
+      <span class="light" role="status" aria-live="polite" data-library-hash-progress></span>
     </p>
     <p class="light">{{ 'Until this finishes, the duplicate count is a floor, not a total.'|t('library') }}</p>
   {% else %}
-    <p><span class="status-label status-label--green"><span class="status green"></span>{{ 'Everything with a possible twin has been hashed.'|t('library') }}</span></p>
+    <p><span class="status-label green"><span class="status green"></span><span class="status-label-text">{{ 'Everything with a possible twin has been hashed.'|t('library') }}</span></span></p>
   {% endif %}
 {% endblock %}

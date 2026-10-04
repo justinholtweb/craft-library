@@ -607,6 +607,23 @@ try {
             ?: 'hashes: ' . json_encode($hashes);
     });
 
+    check('only a hashed, matching pair counts as a duplicate pair to resolve', function() use ($twinA, $twinB, $square) {
+        // The resolve action takes both IDs from a POST body. Repointing moves every relation on
+        // the site, so any two IDs that are not known copies must be refused.
+        $duplicates = Plugin::getInstance()->duplicates;
+        $duplicates->hashAsset($square);
+
+        if (!$duplicates->areDuplicates($twinA, $twinB)) {
+            return 'the twins were not recognised as duplicates';
+        }
+
+        if ($duplicates->areDuplicates($twinA, $square)) {
+            return 'two different files were accepted as duplicates';
+        }
+
+        return !$duplicates->areDuplicates($twinA, $twinA) ?: 'an asset was accepted as its own duplicate';
+    });
+
     check('the duplicate rule finds both members of the pair', function() use ($twinA, $twinB) {
         $condition = new AssetCondition();
         $rule = new HasDuplicatesConditionRule(['condition' => $condition]);
@@ -1161,6 +1178,74 @@ try {
         } finally {
             Plugin::getInstance()->rules->deleteRuleById((int)$rule->id);
         }
+    });
+
+    check('a rule that says leave alone beats the site default', function() use ($volume, $photos) {
+        $settings = Plugin::getInstance()->getSettings();
+        $previous = $settings->defaultAltSource;
+        $settings->defaultAltSource = Settings::ALT_SOURCE_FILENAME;
+
+        $rule = new UploadRule([
+            'name' => 'Libcheck leave-alone rule ' . uniqid(),
+            'volumeId' => $volume->id,
+            'filenamePattern' => 'libcheck-leavealone-*',
+            'collectionIds' => [$photos->id],
+            'altSource' => Settings::ALT_SOURCE_NONE,
+        ]);
+
+        Plugin::getInstance()->rules->saveRule($rule);
+
+        try {
+            $asset = makeAsset('libcheck-leavealone-texture.png', 27, 27);
+            $reloaded = Craft::$app->getAssets()->getAssetById((int)$asset->id);
+
+            return trim((string)$reloaded->alt) === '' ?: 'the site default overrode the rule: ' . $reloaded->alt;
+        } finally {
+            $settings->defaultAltSource = $previous;
+            Plugin::getInstance()->rules->deleteRuleById((int)$rule->id);
+        }
+    });
+
+    check('backfilling a rule files existing assets through the queue job', function() use ($volume, $photos) {
+        // The old in-request backfill was capped at 500 with no offset, so it could never reach
+        // anything past the first slice. It is a batched queue job now; this runs it to the end
+        // against an in-memory queue so nothing lands in the harness's real one.
+        $first = makeAsset('libcheck-backfill-one.png', 28, 28);
+        $second = makeAsset('libcheck-backfill-two.png', 29, 29);
+        $ids = [(int)$first->id, (int)$second->id];
+        $membership = Plugin::getInstance()->membership;
+        $membership->remove($ids, [$photos->id]);
+
+        $rule = new UploadRule([
+            'name' => 'Libcheck backfill rule ' . uniqid(),
+            'volumeId' => $volume->id,
+            'filenamePattern' => 'libcheck-backfill-*',
+            'collectionIds' => [$photos->id],
+        ]);
+
+        Plugin::getInstance()->rules->saveRule($rule);
+
+        try {
+            $job = new justinholtweb\library\jobs\BackfillRule(['ruleId' => (int)$rule->id, 'batchSize' => 100000]);
+            $job->execute(new yii\queue\sync\Queue(['handle' => false]));
+
+            $filed = array_intersect($ids, $membership->getAssetIdsInCollections([$photos->id]));
+
+            return count($filed) === 2 ?: 'filed ' . count($filed) . ' of 2';
+        } finally {
+            Plugin::getInstance()->rules->deleteRuleById((int)$rule->id);
+        }
+    });
+
+    check('a collection badge counts a file filed in parent and child once', function() {
+        $parent = makeCollection('Libcheck badge parent ' . uniqid());
+        $child = makeCollection('Libcheck badge child ' . uniqid(), (int)$parent->id);
+        $asset = makeAsset('libcheck-badge.png', 31, 31);
+        Plugin::getInstance()->membership->assign([(int)$asset->id], [(int)$parent->id, (int)$child->id]);
+
+        $count = Plugin::getInstance()->collections->getAssetCount((int)$parent->id);
+
+        return $count === 1 ?: "counted $count";
     });
 
     // -----------------------------------------------------------------------------------------

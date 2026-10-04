@@ -1,5 +1,6 @@
 {% extends '_layouts/cp.twig' %}
 
+{% set selectedSubnavItem = 'rules' %}
 {% set title = 'Upload rules'|t('library') %}
 {% set crumbs = [{label: 'Library'|t('library'), url: url('library/collections')}] %}
 
@@ -32,18 +33,20 @@
         {% for rule in rules %}
           <tr>
             <td>
-              <span class="status {{ rule.enabled ? 'enabled' : 'disabled' }}"></span>
+              <span class="status {{ rule.enabled ? 'enabled' : 'disabled' }}" role="img"
+                    aria-label="{{ rule.enabled ? 'Enabled'|t('app') : 'Disabled'|t('app') }}"
+                    title="{{ rule.enabled ? 'Enabled'|t('app') : 'Disabled'|t('app') }}"></span>
               <a href="{{ url('library/rules/' ~ rule.id) }}">{{ rule.name }}</a>
             </td>
             <td class="light smalltext">
               {% set bits = [] %}
               {% if rule.volumeId %}
                 {% set volume = craft.app.volumes.getVolumeById(rule.volumeId) %}
-                {% set bits = bits|merge([('volume: ' ~ (volume ? volume.name : 'missing'|t('library')))]) %}
+                {% set bits = bits|merge(['Volume: {name}'|t('library', {name: volume ? volume.name : 'missing'|t('library')})]) %}
               {% endif %}
-              {% if rule.folderPattern %}{% set bits = bits|merge(['folder: ' ~ rule.folderPattern]) %}{% endif %}
-              {% if rule.filenamePattern %}{% set bits = bits|merge(['file: ' ~ rule.filenamePattern]) %}{% endif %}
-              {% if rule.kinds|length %}{% set bits = bits|merge(['kind: ' ~ rule.kinds|join(', ')]) %}{% endif %}
+              {% if rule.folderPattern %}{% set bits = bits|merge(['Folder: {pattern}'|t('library', {pattern: rule.folderPattern})]) %}{% endif %}
+              {% if rule.filenamePattern %}{% set bits = bits|merge(['File: {pattern}'|t('library', {pattern: rule.filenamePattern})]) %}{% endif %}
+              {% if rule.kinds|length %}{% set bits = bits|merge(['Kind: {kinds}'|t('library', {kinds: rule.kinds|join(', ')})]) %}{% endif %}
               {{ bits|length ? bits|join(' · ') : 'every upload'|t('library') }}
             </td>
             <td class="light smalltext">
@@ -53,7 +56,8 @@
               {% endfor %}
               {{ names|length ? names|join(', ') : '—' }}
               {% if rule.altSource and rule.altSource != 'none' %}
-                <br>{{ 'alt from {source}'|t('library', {source: rule.altSource}) }}
+                {% set altLabels = {filename: 'the filename'|t('library'), title: 'the title'|t('library')} %}
+                <br>{{ 'alt from {source}'|t('library', {source: altLabels[rule.altSource] ?? rule.altSource}) }}
               {% endif %}
             </td>
             <td class="thin">
@@ -67,7 +71,9 @@
               </form>
             </td>
             <td class="thin">
-              <a class="delete icon" role="button" data-library-delete-rule="{{ rule.id }}" title="{{ 'Delete'|t('library') }}"></a>
+              <button type="button" class="delete icon" title="{{ 'Delete'|t('library') }}"
+                      aria-label="{{ 'Delete {name}'|t('library', {name: rule.name}) }}"
+                      data-library-delete-rule="{{ rule.id }}"></button>
             </td>
           </tr>
         {% endfor %}
@@ -94,7 +100,10 @@ $('[data-library-delete-rule]').on('click', function () {
   }
 
   Craft.sendActionRequest('POST', 'library/rules/delete', {data: {id: id}})
-    .then(() => $row.remove())
-    .catch(() => Craft.cp.displayError());
+    .then(() => {
+      $row.remove();
+      Craft.cp.displaySuccess(Craft.t('library', 'Rule deleted.'));
+    })
+    .catch((e) => Craft.cp.displayError(e?.response?.data?.message));
 });
 {% endjs %}

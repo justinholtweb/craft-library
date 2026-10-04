@@ -3,8 +3,8 @@
 
 {% set title = isNew ? 'New collection'|t('library') : collection.name %}
 {% set fullPageForm = true %}
+{% set selectedSubnavItem = 'collections' %}
 {% set crumbs = [
-  {label: 'Library'|t('library'), url: url('library/collections')},
   {label: 'Collections'|t('library'), url: url('library/collections')},
 ] %}
 
@@ -59,11 +59,11 @@
 
   {% set colorOpts = [{label: 'None'|t('library'), value: ''}] %}
   {% for color in colorOptions %}
-    {% set colorOpts = colorOpts|merge([{label: color|title, value: color}]) %}
+    {% set colorOpts = colorOpts|merge([{label: (color|title)|t('app'), value: color}]) %}
   {% endfor %}
 
   {{ forms.selectField({
-    label: 'Colour'|t('library'),
+    label: 'Color'|t('library'),
     instructions: 'Shows as a dot beside the collection in the sidebar and on asset chips.'|t('library'),
     id: 'color',
     name: 'color',

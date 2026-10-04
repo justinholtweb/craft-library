@@ -299,6 +299,39 @@ class Duplicates extends Component
     }
 
     /**
+     * Whether two assets are known, right now, to be byte-identical copies.
+     *
+     * The resolve action takes two IDs from a POST body, and repointing is powerful: it moves every
+     * relation on the site, including from entries the requester cannot edit. So it is only ever
+     * allowed between files the hash table says are the same — both hashed, the same hash, and
+     * neither changed on disk since (a stored size that no longer matches means a stale hash).
+     */
+    public function areDuplicates(Asset $a, Asset $b): bool
+    {
+        if ($a->id === null || $b->id === null || $a->id === $b->id) {
+            return false;
+        }
+
+        $rows = (new Query())
+            ->select(['assetId', 'size', 'hash'])
+            ->from(HashRecord::TABLE)
+            ->where(['assetId' => [$a->id, $b->id]])
+            ->indexBy('assetId')
+            ->all();
+
+        $rowA = $rows[$a->id] ?? null;
+        $rowB = $rows[$b->id] ?? null;
+
+        if ($rowA === null || $rowB === null || $rowA['hash'] === null || $rowA['hash'] === '') {
+            return false;
+        }
+
+        return $rowA['hash'] === $rowB['hash']
+            && (int)$rowA['size'] === (int)$a->size
+            && (int)$rowB['size'] === (int)$b->size;
+    }
+
+    /**
      * Repoints every relation on `$copy` at `$original`, so the copy can be deleted without
      * blanking the fields that pointed at it.
      *

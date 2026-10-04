@@ -1,6 +1,6 @@
 # Release Notes for Library
 
-## 5.0.0 — 2026-08-18
+## 5.0.0 - 2026-08-18
 
 Initial release.
 

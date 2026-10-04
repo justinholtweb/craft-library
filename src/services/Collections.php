@@ -228,19 +228,25 @@ class Collections extends Component
         return $this->counts;
     }
 
-    /** Count for one collection, including its descendants — that is what a tree badge means. */
+    /**
+     * Count for one collection, including its descendants — that is what a tree badge means.
+     *
+     * Distinct assets, not a sum of the per-collection tallies: a file filed in a parent and one
+     * of its children is one file, and the source it labels lists it once.
+     */
     public function getAssetCount(int $collectionId, bool $includeDescendants = true): int
     {
-        $counts = $this->getAssetCounts();
-        $total = $counts[$collectionId] ?? 0;
-
-        if ($includeDescendants) {
-            foreach ($this->getDescendantIds($collectionId) as $id) {
-                $total += $counts[$id] ?? 0;
-            }
+        if (!$includeDescendants) {
+            return $this->getAssetCounts()[$collectionId] ?? 0;
         }
 
-        return $total;
+        $ids = [$collectionId, ...$this->getDescendantIds($collectionId)];
+
+        return (int)(new Query())
+            ->from(['ca' => CollectionAssetRecord::TABLE])
+            ->innerJoin(['e' => \craft\db\Table::ELEMENTS], '[[e.id]] = [[ca.assetId]]')
+            ->where(['ca.collectionId' => $ids, 'e.dateDeleted' => null])
+            ->count('DISTINCT [[ca.assetId]]');
     }
 
     /** @return int[] */

@@ -253,11 +253,6 @@ class Scanner extends Component
             ->where(['es.elementId' => $elementId])
             ->all();
 
-        Db::delete(UsageRecord::TABLE, [
-            'elementId' => $elementId,
-            'source' => Usage::SOURCE_REFTAG,
-        ]);
-
         $refs = [];
         $elementType = null;
         $siteId = null;
@@ -280,10 +275,17 @@ class Scanner extends Component
             }
         }
 
-        if (!$refs) {
-            return;
-        }
+        // Delete and re-record together: a failure between the two would otherwise leave every
+        // asset this element references reading as unused.
+        Craft::$app->getDb()->transaction(function() use ($elementId, $refs) {
+            Db::delete(UsageRecord::TABLE, [
+                'elementId' => $elementId,
+                'source' => Usage::SOURCE_REFTAG,
+            ]);
 
-        $this->record([$elementId => $refs]);
+            if ($refs) {
+                $this->record([$elementId => $refs]);
+            }
+        });
     }
 }

@@ -1,7 +1,6 @@
 {
     "name": "justinholtweb/craft-library",
     "description": "A better media library for Craft CMS — collections, filters that work everywhere, bulk editing, usage tracking, duplicate detection and an alt text audit for your assets.",
-    "version": "5.0.0",
     "type": "craft-plugin",
     "keywords": [
         "craftcms",
@@ -16,7 +15,7 @@
         "accessibility"
     ],
     "license": "proprietary",
-    "homepage": "https://craft-library.com",
+    "homepage": "https://justinholt.com/plugins/craft-library",
     "authors": [
         {
             "name": "Justin Holt",
@@ -25,6 +24,8 @@
     ],
     "support": {
         "email": "justin@justinholt.com",
+        "docs": "https://justinholt.com/plugins/craft-library/docs",
+        "source": "https://github.com/justinholtweb/craft-library",
         "issues": "https://github.com/justinholtweb/craft-library/issues"
     },
     "minimum-stability": "stable",
@@ -56,7 +57,7 @@
         "handle": "library",
         "developer": "Justin Holt",
         "developerUrl": "https://justinholt.com",
-        "documentationUrl": "https://github.com/justinholtweb/craft-library/blob/main/README.md",
+        "documentationUrl": "https://justinholt.com/plugins/craft-library/docs",
         "changelogUrl": "https://raw.githubusercontent.com/justinholtweb/craft-library/main/CHANGELOG.md",
         "class": "justinholtweb\\library\\Plugin",
         "editions": ["lite", "pro"]

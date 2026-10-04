@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<!-- handmade: hand-tuned deck -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Library — Plugin Store promos</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --charcoal: #0e1416;
+    --charcoal-light: #16212a;
+    --charcoal-lighter: #20313a;
+    --accent: #438F93;
+    --accent-light: #8CCFD2;
+    --gold: #F2C46D;
+    --off-white: #f0f0f5;
+  }
+
+  html { background: #000; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--off-white);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- slide shell ---------------------------------------------------- */
+  .slide {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 85% 15%, rgba(67, 143, 147, 0.36) 0%, transparent 40%),
+      radial-gradient(ellipse at 65% 5%,  rgba(140, 207, 210, 0.14) 0%, transparent 35%),
+      radial-gradient(ellipse at 15% 85%, rgba(255, 209, 102, 0.07) 0%, transparent 40%),
+      radial-gradient(ellipse at 35% 95%, rgba(67, 143, 147, 0.16) 0%, transparent 35%),
+      linear-gradient(135deg, #0e1416 0%, #0f1a1c 30%, #112123 60%, #0e1416 100%);
+  }
+
+  /* Oversized watermark: the mark with the tile stripped, because a rounded square at this
+     size reads as a grey box across the slide rather than as the icon. Anchored bottom-right and
+     running off the right and bottom edges, so the shelf sits behind the empty side of each slide
+     rather than behind the headline. */
+  .slide::after {
+    content: '';
+    position: absolute;
+    top: 22%;
+    right: -22%;
+    width: 1400px;
+    height: 1400px;
+    background: url('assets/watermark.svg') no-repeat center / contain;
+    opacity: 0.03;
+    pointer-events: none;
+  }
+
+  /* The cover has the icon itself; a watermark behind it reads as its shadow. */
+  .cover::after { display: none; }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light), var(--gold), var(--accent));
+    z-index: 5;
+  }
+
+  .inner {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    padding: 118px 130px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ---- type ------------------------------------------------------------ */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(240, 240, 245, 0.62);
+    margin-bottom: 34px;
+  }
+  .eyebrow .rule {
+    width: 58px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent-light);
+  }
+
+  h1, h2 {
+    font-family: 'Jersey 20', sans-serif;
+    font-weight: 400;
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+  }
+
+  .gradient-text {
+    background: linear-gradient(100deg, #5AAFB3 0%, #8CCFD2 38%, #E2F4F5 66%, #5AAFB3 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .lede {
+    font-size: 34px;
+    line-height: 1.5;
+    color: rgba(240, 240, 245, 0.72);
+  }
+
+  .mono {
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+
+  /* ---- cover ----------------------------------------------------------- */
+  .cover .inner { gap: 90px; }
+  .cover .copy { flex: 1 1 auto; }
+  .cover h1 { font-size: 168px; margin-bottom: 26px; }
+  .cover .tagline {
+    font-size: 46px;
+    line-height: 1.25;
+    color: rgba(240, 240, 245, 0.78);
+    margin-bottom: 46px;
+    max-width: 900px;
+  }
+  .cover .badges { display: flex; gap: 18px; align-items: center; }
+  .badge {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 14px 26px;
+    border-radius: 999px;
+    border: 2px solid rgba(140, 207, 210, 0.45);
+    color: rgba(240, 240, 245, 0.85);
+  }
+  .badge.free { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .cover .mark { flex: 0 0 auto; }
+  .cover .mark img { width: 420px; height: 420px; display: block; }
+
+  /* ---- feature slides -------------------------------------------------- */
+  .feature .inner { padding-right: 0; }
+  .feature .copy { width: 760px; flex: 0 0 auto; }
+  .feature h2 { font-size: 96px; margin-bottom: 30px; }
+  .feature .lede { max-width: 700px; }
+
+  .points { list-style: none; margin-top: 40px; display: flex; flex-direction: column; gap: 20px; }
+  .points li {
+    display: flex;
+    gap: 16px;
+    font-size: 25px;
+    line-height: 1.4;
+    color: rgba(240, 240, 245, 0.6);
+  }
+  .points li svg { flex: 0 0 auto; margin-top: 4px; }
+
+  /* ---- screenshot slabs ------------------------------------------------ */
+  .shot {
+    position: absolute;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .shot .chrome {
+    height: 40px;
+    background: #2a2a3e;
+    background-image:
+      radial-gradient(circle at 24px 20px, #ff5f57 6px, transparent 6.5px),
+      radial-gradient(circle at 48px 20px, #ffbd2e 6px, transparent 6.5px),
+      radial-gradient(circle at 72px 20px, #28ca42 6px, transparent 6.5px);
+  }
+  .shot .viewport { overflow: hidden; background: #e4edf6; position: relative; }
+  .shot img { display: block; width: 100%; position: absolute; left: 0; }
+
+  .caption {
+    font-size: 22px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(240, 240, 245, 0.5);
+    margin-bottom: 14px;
+  }
+  .caption b { color: var(--accent-light); font-weight: 600; }
+
+  /* ---- before / after -------------------------------------------------- */
+  .compare .inner { flex-direction: column; align-items: flex-start; padding-bottom: 60px; }
+  .compare h2 { font-size: 88px; margin-bottom: 18px; }
+  .compare .lede { font-size: 30px; max-width: 1280px; margin-bottom: 44px; }
+  .compare .pair { display: flex; gap: 56px; width: 100%; }
+  .compare .pane { flex: 1 1 0; min-width: 0; }
+  .compare .shot { position: relative; }
+
+  .arrow {
+    position: absolute;
+    left: 50%;
+    top: 640px;
+    transform: translateX(-50%);
+    z-index: 4;
+    width: 92px;
+    height: 92px;
+    border-radius: 999px;
+    background: var(--accent);
+    box-shadow: 0 12px 40px rgba(67, 143, 147, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ---- closing panel --------------------------------------------------- */
+  .closing .inner { flex-direction: column; align-items: flex-start; justify-content: center; }
+  .closing h2 { font-size: 104px; margin-bottom: 34px; }
+  .closing .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 26px 54px;
+    margin-top: 20px;
+    width: 1420px;
+  }
+  .closing .cell {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(24, 40, 44, 0.55);
+    padding: 28px 32px;
+  }
+  .closing .cell b { display: block; font-size: 28px; margin-bottom: 8px; color: var(--off-white); }
+  .closing .cell span { font-size: 23px; line-height: 1.45; color: rgba(240, 240, 245, 0.58); }
+
+  /* ---- layout diagram slide -------------------------------------------- */
+  .diagram {
+    position: absolute;
+    right: 130px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 800px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(15, 15, 26, 0.72);
+    padding: 44px 48px;
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 26px;
+    line-height: 1.65;
+    color: rgba(240, 240, 245, 0.72);
+    white-space: pre;
+  }
+  .diagram .tab { color: var(--off-white); font-weight: 600; }
+  .diagram .marker { color: var(--accent-light); }
+  .diagram .dim { color: rgba(240, 240, 245, 0.38); }
+  .diagram .gold { color: var(--gold); }
+
+  /* ---- footer lockup --------------------------------------------------- */
+  .footer {
+    position: absolute;
+    left: 130px;
+    bottom: 54px;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 22px;
+    color: rgba(240, 240, 245, 0.42);
+  }
+  .footer img { width: 40px; height: 40px; border-radius: 9px; }
+  .footer b { color: rgba(240, 240, 245, 0.72); font-weight: 600; }
+
+  /* Only render the requested slide when screenshotting */
+  body.single .slide { display: none; }
+  body.single .slide.active { display: block; }
+
+  /* ---- control-panel screenshot cards -------------------------------
+     Self-contained: these cards must drop into any deck in the family, and the decks
+     do not share a class system. Only --accent and --off-white are relied on, both of
+     which every deck defines, and both have fallbacks. */
+  .slide.cpcard { display: block; }
+  .cpcard .cpc-inner {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    padding: 112px 120px;
+    display: flex;
+    align-items: center;
+    gap: 70px;
+  }
+  .cpcard .cpc-copy { width: 660px; flex: 0 0 660px; }
+
+  .cpcard .cpc-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 34px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-light, #7aa2c8);
+  }
+  .cpcard .cpc-eyebrow i {
+    display: block;
+    width: 62px;
+    height: 3px;
+    background: var(--accent-light, #7aa2c8);
+    border-radius: 2px;
+  }
+
+  .cpcard .cpc-h2 {
+    font-family: 'Jersey 20', 'Inter', sans-serif;
+    font-size: 88px;
+    line-height: 0.96;
+    font-weight: 400;
+    letter-spacing: 0.005em;
+    margin: 0 0 28px;
+    color: var(--off-white, #f0f0f5);
+  }
+
+  .cpcard .cpc-lede {
+    font-size: 33px;
+    line-height: 1.42;
+    color: rgba(240, 240, 245, 0.66);
+    margin: 0;
+  }
+
+  .cpcard .cpc-points { list-style: none; margin: 40px 0 0; padding: 0; }
+  .cpcard .cpc-points li {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    font-size: 26px;
+    line-height: 1.5;
+    color: rgba(240, 240, 245, 0.72);
+    margin-bottom: 18px;
+  }
+  .cpcard .cpc-points li::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    margin-top: 14px;
+    border-radius: 50%;
+    background: var(--accent, #7aa2c8);
+  }
+
+  .cpcard .cpc-panel { flex: 1 1 auto; min-width: 0; }
+
+  .cpcard .cpc-frame {
+    border-radius: 14px;
+    overflow: hidden;
+    background: #e4edf6;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55), 0 6px 18px rgba(0, 0, 0, 0.35);
+  }
+  .cpcard .cpc-chrome {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 13px 18px;
+    background: linear-gradient(180deg, #2a2a3d 0%, #21212f 100%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  }
+  .cpcard .cpc-chrome b { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.16); }
+  .cpcard .cpc-chrome b:nth-child(1) { background: #ff5f57; }
+  .cpcard .cpc-chrome b:nth-child(2) { background: #febc2e; }
+  .cpcard .cpc-chrome b:nth-child(3) { background: #28c840; }
+  .cpcard .cpc-chrome em {
+    margin-left: 12px;
+    font-style: normal;
+    font-size: 19px;
+    letter-spacing: 0.02em;
+    color: rgba(240, 240, 245, 0.45);
+  }
+  .cpcard .cpc-frame img { display: block; width: 100%; height: auto; }
+
+  /* A tall capture is anchored to its top — the interesting rows are always first.
+     The fade makes the cut read as "there is more" rather than as a broken edge. */
+  .cpcard .cpc-frame.cpc-clip { max-height: 620px; position: relative; }
+  .cpcard .cpc-frame.cpc-clip img { object-fit: cover; object-position: top center; max-height: 580px; }
+  .cpcard .cpc-frame.cpc-clip::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 130px;
+    background: linear-gradient(180deg, rgba(228,237,246,0) 0%, rgba(228,237,246,0.92) 78%, #e4edf6 100%);
+  }
+
+  .cpcard .cpc-caption {
+    display: block;
+    margin-top: 20px;
+    font-size: 22px;
+    line-height: 1.45;
+    color: rgba(240, 240, 245, 0.52);
+  }
+  .cpcard .cpc-caption b { color: rgba(240, 240, 245, 0.80); font-weight: 600; }
+
+
+
+  /* ---- the pitch (slide 2) --------------------------------------------- */
+  .pitch { position: absolute; right: 110px; top: 50%; transform: translateY(-50%); width: 1000px; display: flex; flex-direction: column; gap: 28px; }
+  .card { border-radius: 14px; border: 1px solid rgba(255,255,255,0.09); background: rgba(14,26,28,0.78); padding: 30px 36px; }
+  .card h3 { font-size: 21px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(240,240,245,0.5); margin-bottom: 22px; }
+  .card h3 b { color: var(--accent-light); font-weight: 600; }
+
+  .files { display: flex; flex-direction: column; gap: 16px; }
+  .file { display: grid; grid-template-columns: 430px 1fr; gap: 24px; align-items: center; }
+  .file .path { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 21px; color: rgba(240,240,245,0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file .path i { font-style: normal; color: rgba(240,240,245,0.38); }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { display: inline-flex; align-items: center; gap: 9px; font-size: 20px; font-weight: 500; padding: 6px 15px 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.07); color: var(--off-white); }
+  .chip::before { content: ''; width: 11px; height: 11px; border-radius: 50%; background: var(--c, var(--accent)); }
+
+  .places { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
+  .place { display: flex; gap: 14px; align-items: baseline; font-size: 26px; color: var(--off-white); font-weight: 500; }
+  .place i { font-style: normal; color: var(--accent-light); font-weight: 700; }
+  .card .note { margin-top: 20px; font-size: 21px; line-height: 1.45; color: rgba(240,240,245,0.5); }
+  .card .note .mono { color: rgba(240,240,245,0.72); font-size: 19px; }
+
+  /* ---- Pro (slide 6) ---------------------------------------------------- */
+  .pro { position: absolute; right: 110px; top: 50%; transform: translateY(-50%); width: 1000px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .pro .card { padding: 26px 30px; }
+  .pro b { display: block; font-size: 27px; font-weight: 600; color: var(--off-white); margin-bottom: 8px; }
+  .pro span { font-size: 21px; line-height: 1.45; color: rgba(240,240,245,0.6); }
+
+  .badge.price { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Screenshot frames are light CP captures on a dark slide; keep the frame's fill matched to
+     Craft's own page grey so a short capture doesn't show a band of the wrong colour. */
+  .cpcard .cpc-frame { background: #f3f7fc; }
+  .cpcard .cpc-copy { width: 600px; flex: 0 0 600px; }
+</style>
+</head>
+<body>
+
+<!-- 1 · Cover ============================================================ -->
+<section class="slide cover" data-n="1">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Craft CMS 5</div>
+      <h1 class="gradient-text">Library</h1>
+      <p class="tagline">A media library for Craft.<br>Collections across every volume, and filters everywhere assets are chosen.</p>
+      <div class="badges">
+        <span class="badge price">Lite free</span>
+        <span class="badge">Pro $79</span>
+        <span class="badge">$59/yr renewal</span>
+      </div>
+    </div>
+    <div class="mark"><img src="assets/icon.svg" alt=""></div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Library</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-library</div>
+</section>
+
+<!-- 2 · The pitch ======================================================== -->
+<section class="slide feature" data-n="2">
+  <div class="inner">
+    <div class="copy" style="width: 600px;">
+      <div class="eyebrow"><span class="rule"></span> The idea</div>
+      <h2>File by what<br>it is, not<br>where it lives</h2>
+      <p class="lede" style="max-width: 580px;">A folder says where a file sits. A collection says what it is, across every volume and folder.</p>
+    </div>
+  </div>
+  <div class="pitch">
+    <div class="card">
+      <h3>One file, <b>any number of collections</b></h3>
+      <div class="files">
+        <div class="file"><span class="path"><i>editorial/</i>harbour-cranes.jpg</span><span class="chips"><span class="chip" style="--c:#10b981">Editorial</span><span class="chip" style="--c:#ef4444">Press kit</span><span class="chip" style="--c:#f59e0b">Autumn 2025</span></span></div>
+        <div class="file"><span class="path"><i>brand/</i>brand-logo-light.png</span><span class="chips"><span class="chip" style="--c:#8b5cf6">Brand › Logos</span><span class="chip" style="--c:#ef4444">Press kit</span></span></div>
+        <div class="file"><span class="path"><i>uploads/2024/</i>team-ana-ruiz-final.jpg</span><span class="chips"><span class="chip" style="--c:#14b8a6">Team photos</span></span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>One condition rule, <b>four places</b></h3>
+      <div class="places">
+        <div class="place"><i>✓</i> The asset index toolbar</div>
+        <div class="place"><i>✓</i> Asset field selector modals</div>
+        <div class="place"><i>✓</i> Asset field settings</div>
+        <div class="place"><i>✓</i> Custom sources</div>
+      </div>
+      <p class="note">Craft asks the same asset condition in all four, so one native rule reaches them all. It's enforced in SQL and composes with search and with Craft's own filters.</p>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Library</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-library</div>
+</section>
+
+<!-- 3 · Asset index (real CP screenshot) ================================= -->
+<section class="slide cpcard" data-n="3">
+  <div class="cpc-inner">
+    <div class="cpc-copy">
+      <div class="cpc-eyebrow"><i></i> In the asset index</div>
+      <h2 class="cpc-h2">Collections<br>in the sidebar</h2>
+      <p class="cpc-lede">Every collection is a source, nested to match the tree and counted, beside Craft's own volumes.</p>
+      <ul class="cpc-points">
+        <li>Also in the modal an asset field opens</li>
+        <li>A Collections column, plus a Collection filter that composes with search</li>
+      </ul>
+    </div>
+    <div class="cpc-panel">
+      <figure class="cpc-frame cpc-clip">
+        <div class="cpc-chrome"><b></b><b></b><b></b><em>Assets → Spring 2026</em></div>
+        <img src="shots/library-index.png" alt="">
+      </figure>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Library</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-library</div>
+</section>
+
+<!-- 4 · Asset panel (real CP screenshot) ================================= -->
+<section class="slide cpcard" data-n="4">
+  <div class="cpc-inner">
+    <div class="cpc-copy">
+      <div class="cpc-eyebrow"><i></i> On the asset</div>
+      <h2 class="cpc-h2">Filed from<br>the asset itself</h2>
+      <p class="cpc-lede">The Library panel files an image as you tick. On Pro it also lists every place the file is used.</p>
+      <ul class="cpc-points">
+        <li>Asset fields, CKEditor and Redactor, read live</li>
+        <li>Drafts and revisions never count as use</li>
+      </ul>
+    </div>
+    <div class="cpc-panel">
+      <figure class="cpc-frame">
+        <div class="cpc-chrome"><b></b><b></b><b></b><em>harbour-cranes.jpg</em></div>
+        <img src="shots/library-asset-panel.png" alt="">
+      </figure>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Library</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-library</div>
+</section>
+
+<!-- 5 · Duplicates (real CP screenshot) ================================== -->
+<section class="slide cpcard" data-n="5">
+  <div class="cpc-inner">
+    <div class="cpc-copy">
+      <div class="cpc-eyebrow"><i></i> Library → Audit</div>
+      <h2 class="cpc-h2">Duplicates,<br>merged safely</h2>
+      <p class="cpc-lede">Files are compared by size first and hashed only when a size is shared, so nothing is read without a possible twin.</p>
+      <ul class="cpc-points">
+        <li>Merging repoints every relation onto the original</li>
+        <li>The copy goes to the trash, so it can come back</li>
+      </ul>
+    </div>
+    <div class="cpc-panel">
+      <figure class="cpc-frame cpc-clip">
+        <div class="cpc-chrome"><b></b><b></b><b></b><em>Library → Audit → Duplicates</em></div>
+        <img src="shots/library-duplicates.png" alt="">
+      </figure>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Library</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-library</div>
+</section>
+
+<!-- 6 · Pro ============================================================== -->
+<section class="slide feature" data-n="6">
+  <div class="inner">
+    <div class="copy" style="width: 600px;">
+      <div class="eyebrow"><span class="rule"></span> Library Pro</div>
+      <h2>Before you<br>dare delete<br>anything</h2>
+      <p class="lede" style="max-width: 560px;">Pro answers “is anything pointing at this?” and keeps the library tidy as files arrive.</p>
+    </div>
+  </div>
+  <div class="pro">
+    <div class="card"><b>Usage tracking</b><span>Relations read live from Craft. Typed reference tags found by a scan.</span></div>
+    <div class="card"><b>Unused assets</b><span>A filter and an audit screen for files nothing points at.</span></div>
+    <div class="card"><b>Duplicates</b><span>Byte-identical copies, merged onto the original without breaking a link.</span></div>
+    <div class="card"><b>Alt text audit</b><span>Per-site counts, and first drafts from filenames or titles.</span></div>
+    <div class="card"><b>Upload rules</b><span>File arrivals into collections by volume, folder, filename or kind.</span></div>
+    <div class="card"><b>Rename and move</b><span>Bulk rename by pattern, with a preview. Move to another volume, same element.</span></div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Library</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-library</div>
+</section>
+
+<!-- 7 · Closing ========================================================== -->
+<section class="slide closing" data-n="7">
+  <div class="inner">
+    <div class="eyebrow"><span class="rule"></span> Lite free · Pro $79 · Craft CMS 5</div>
+    <h2>A taxonomy for your assets,<br>done the Craft way</h2>
+    <div class="grid">
+      <div class="cell"><b>Lite, free</b><span>Nested collections, the Collection and Orientation filters, the Library panel, bulk filing and alt text from filenames.</span></div>
+      <div class="cell"><b>Pro</b><span>Usage tracking, unused files, duplicates, the alt text audit, upload rules, bulk rename and move to volume.</span></div>
+      <div class="cell"><b>Content, not schema</b><span>Collections live in the database and never touch project config, so an editor can make one without a deploy.</span></div>
+      <div class="cell"><b>Hands off your content</b><span>It never moves files on its own or rewrites text, and won’t overwrite alt text somebody wrote unless asked.</span></div>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Library</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-library</div>
+</section>
+
+<script>
+  var n = new URLSearchParams(location.search).get('s');
+  if (n) {
+    document.body.classList.add('single');
+    var el = document.querySelector('.slide[data-n="' + n + '"]');
+    if (el) el.classList.add('active');
+  }
+</script>
+</body>
+</html>

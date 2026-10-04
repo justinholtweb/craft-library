@@ -49,17 +49,24 @@ class Alt extends Component
      */
     public function missingAltQuery(?int $siteId = null): AssetQuery
     {
+        return $this->imagesQuery($siteId)->hasAlt(false);
+    }
+
+    /** Every image on a site, outside the excluded volumes — the population the audit counts. */
+    public function imagesQuery(?int $siteId = null): AssetQuery
+    {
         $siteId ??= Craft::$app->getSites()->getCurrentSite()->id;
         $excluded = Plugin::getInstance()->getSettings()->getExcludedVolumeIds();
 
         $query = Asset::find()
             ->siteId($siteId)
             ->kind(Asset::KIND_IMAGE)
-            ->hasAlt(false)
             ->status(null);
 
+        // `['not', 1, 2]`, never `['not 1', 'not 2']`: a list of separate negations is OR-glued,
+        // which with two or more volumes is always true and excludes nothing.
         if ($excluded) {
-            $query->volumeId(array_map(fn(int $id) => "not $id", $excluded));
+            $query->volumeId(array_merge(['not'], $excluded));
         }
 
         return $query;
@@ -208,16 +215,8 @@ class Alt extends Component
     public function getStats(?int $siteId = null): array
     {
         $siteId ??= Craft::$app->getSites()->getCurrentSite()->id;
-        $excluded = Plugin::getInstance()->getSettings()->getExcludedVolumeIds();
 
-        $imagesQuery = Asset::find()
-            ->siteId($siteId)
-            ->kind(Asset::KIND_IMAGE)
-            ->status(null);
-
-        if ($excluded) {
-            $imagesQuery->volumeId(array_map(fn(int $id) => "not $id", $excluded));
-        }
+        $imagesQuery = $this->imagesQuery($siteId);
 
         $images = (int)$imagesQuery->count();
         $missing = $this->getMissingAltCount($siteId);

@@ -1,5 +1,6 @@
 {% extends '_layouts/cp.twig' %}
 
+{% set selectedSubnavItem = 'audit' %}
 {% set title = 'Not used anywhere'|t('library') %}
 {% set crumbs = [
   {label: 'Library'|t('library'), url: url('library/collections')},
@@ -45,7 +46,7 @@
 
     {% set pages = (total / perPage)|round(0, 'ceil') %}
     {% if pages > 1 %}
-      <nav class="pagination" style="margin-top:14px">
+      <nav class="pagination library-pagination" aria-label="{{ 'Pagination'|t('library') }}">
         {% if page > 1 %}<a class="btn" href="{{ url('library/audit/unused', {page: page - 1}) }}">{{ '← Previous'|t('library') }}</a>{% endif %}
         <span class="light">{{ 'Page {page} of {pages}'|t('library', {page: page, pages: pages}) }}</span>
         {% if page < pages %}<a class="btn" href="{{ url('library/audit/unused', {page: page + 1}) }}">{{ 'Next →'|t('library') }}</a>{% endif %}

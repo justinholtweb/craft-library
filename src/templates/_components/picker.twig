@@ -9,8 +9,9 @@
   {% import _self as picker %}
   {% for collection in collections %}
     {% set id = "library-pick-#{name ? name|replace({'[': '', ']': ''}) : 'x'}-#{collection.id}" %}
-    <div class="library-picker__row" style="padding-left: {{ 6 + depth * 16 }}px">
+    <div class="library-picker__row" style="padding-inline-start: {{ 6 + depth * 16 }}px">
       <input type="checkbox"
+             class="checkbox"
              id="{{ id }}"
              {% if name %}name="{{ name }}"{% endif %}
              value="{{ collection.id }}"

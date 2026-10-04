@@ -1,4 +1,8 @@
-/* Library — control panel styles. No build step; this file is what ships. */
+/* Library — control panel styles. No build step; this file is what ships.
+ *
+ * Colours use Craft's long-standing aliases (--hairline-color, --medium-text-color…) rather than
+ * the newer semantic names (--border-hairline, --fg-subtle…): the aliases still resolve on current
+ * Craft, and the semantic names do not exist on every 5.x this plugin supports (5.3+). */
 
 .library-chips {
   display: flex;
@@ -27,7 +31,7 @@
 .library-chip--more {
   color: var(--medium-text-color);
   background: none;
-  padding-left: 2px;
+  padding-inline-start: 2px;
 }
 
 /* The collection picker in the asset sidebar and in the bulk action menus. */
@@ -47,7 +51,8 @@
   border-radius: var(--small-border-radius);
 }
 
-.library-picker__row:hover {
+.library-picker__row:hover,
+.library-picker__row:focus-within {
   background-color: var(--gray-050);
 }
 
@@ -62,8 +67,8 @@
 }
 
 .library-panel__section + .library-panel__section {
-  margin-top: 18px;
-  padding-top: 14px;
+  margin-top: var(--l);
+  padding-top: var(--m);
   border-top: 1px solid var(--hairline-color);
 }
 
@@ -92,15 +97,15 @@
 .library-dupe-group {
   border: 1px solid var(--hairline-color);
   border-radius: var(--large-border-radius);
-  padding: 14px;
-  margin-bottom: 14px;
+  padding: var(--m);
+  margin-bottom: var(--m);
 }
 
 .library-dupe-group__files {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
-  margin-top: 10px;
+  gap: var(--m);
+  margin-top: var(--s);
 }
 
 .library-dupe-file {
@@ -126,8 +131,8 @@
 .library-stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-  margin-bottom: 24px;
+  gap: var(--m);
+  margin-bottom: var(--xl);
 }
 
 .library-stat {
@@ -160,4 +165,21 @@
 
 .library-token-list code {
   font-size: 12px;
+}
+
+.library-panel__status {
+  margin-top: var(--xs);
+}
+
+.library-dupe-file__form {
+  margin-top: var(--s);
+}
+
+.library-pagination,
+.library-footnote {
+  margin-top: var(--m);
+}
+
+.library-trigger-buttons {
+  margin-top: var(--s);
 }

@@ -10,10 +10,10 @@
   <div class="padded" data-library-panel="{{ triggerId }}" style="min-width:280px">
     {% if volumes|length %}
       <div class="field">
-        <div class="heading"><label>{{ 'Move to'|t('library') }}</label></div>
+        <div class="heading"><label for="library-volume-{{ triggerId }}">{{ 'Move to'|t('library') }}</label></div>
         <div class="input">
           <div class="select">
-            <select data-library-volume>
+            <select id="library-volume-{{ triggerId }}" data-library-volume>
               {% for volume in volumes %}
                 <option value="{{ volume.value }}">{{ volume.label }}</option>
               {% endfor %}
@@ -22,9 +22,9 @@
         </div>
       </div>
       <div class="field">
-        <div class="heading"><label>{{ 'Subfolder'|t('library') }}</label></div>
+        <div class="heading"><label for="library-subfolder-{{ triggerId }}">{{ 'Subfolder'|t('library') }}</label></div>
         <div class="input">
-          <input type="text" class="text fullwidth" data-library-subfolder
+          <input type="text" class="text fullwidth" id="library-subfolder-{{ triggerId }}" data-library-subfolder
                  placeholder="{{ 'optional, created if missing'|t('library') }}">
         </div>
       </div>
@@ -32,7 +32,7 @@
         <button type="button" class="btn submit" data-library-apply="{{ triggerId }}">{{ 'Move'|t('library') }}</button>
       </div>
     {% else %}
-      <p class="error">{{ 'You cannot save assets in any volume.'|t('library') }}</p>
+      <p class="light">{{ 'You cannot save assets in any volume.'|t('library') }}</p>
     {% endif %}
   </div>
 </div>

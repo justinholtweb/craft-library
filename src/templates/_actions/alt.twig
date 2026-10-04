@@ -9,10 +9,10 @@
 <div id="library-menu-{{ triggerId }}" class="menu menu--disclosure" data-disclosure-menu>
   <div class="padded" data-library-panel="{{ triggerId }}" style="min-width:300px">
     <div class="field">
-      <div class="heading"><label>{{ 'Take alt text from'|t('library') }}</label></div>
+      <div class="heading"><label for="library-alt-source-{{ triggerId }}">{{ 'Take alt text from'|t('library') }}</label></div>
       <div class="input">
         <div class="select">
-          <select data-library-alt-source>
+          <select id="library-alt-source-{{ triggerId }}" data-library-alt-source>
             <option value="filename">{{ 'The filename'|t('library') }}</option>
             <option value="title">{{ 'The title'|t('library') }}</option>
           </select>
@@ -21,11 +21,10 @@
     </div>
     <div class="field">
       <div class="input">
-        <label>
-          <input type="checkbox" data-library-alt-overwrite>
-          {{ 'Replace alt text that is already there'|t('library') }}
-        </label>
-        <p class="light">{{ 'Off by default — a description somebody wrote beats anything derived from a filename.'|t('library') }}</p>
+        <input type="checkbox" class="checkbox" id="library-alt-overwrite-{{ triggerId }}" data-library-alt-overwrite
+               aria-describedby="library-alt-overwrite-{{ triggerId }}-tip">
+        <label for="library-alt-overwrite-{{ triggerId }}">{{ 'Replace alt text that is already there'|t('library') }}</label>
+        <p class="light" id="library-alt-overwrite-{{ triggerId }}-tip">{{ 'Off by default — a description somebody wrote beats anything derived from a filename.'|t('library') }}</p>
       </div>
     </div>
     <div class="buttons right">

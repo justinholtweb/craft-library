@@ -1,6 +1,7 @@
 {% extends '_layouts/cp.twig' %}
 {% import '_includes/forms.twig' as forms %}
 
+{% set selectedSubnavItem = 'collections' %}
 {% set title = 'Collections'|t('library') %}
 {% set fullPageForm = false %}
 
@@ -11,7 +12,7 @@
 {% macro row(collection, counts, depth) %}
   {% import _self as m %}
   <tr data-id="{{ collection.id }}" data-name="{{ collection.name }}">
-    <td style="padding-left: {{ 14 + depth * 22 }}px">
+    <td style="padding-inline-start: {{ 14 + depth * 22 }}px">
       {% if collection.color %}<span class="status {{ collection.color }}"></span>{% endif %}
       <a href="{{ url('library/collections/' ~ collection.id) }}">{{ collection.name }}</a>
       {% if collection.description %}
@@ -21,8 +22,9 @@
     <td><code>{{ collection.handle }}</code></td>
     <td class="thin">{{ counts[collection.id] ?? 0 }}</td>
     <td class="thin">
-      <a class="delete icon" title="{{ 'Delete'|t('library') }}" role="button"
-         data-library-delete="{{ collection.id }}"></a>
+      <button type="button" class="delete icon" title="{{ 'Delete'|t('library') }}"
+              aria-label="{{ 'Delete {name}'|t('library', {name: collection.name}) }}"
+              data-library-delete="{{ collection.id }}"></button>
     </td>
   </tr>
   {% for child in collection.children %}
@@ -51,7 +53,7 @@
       </tbody>
     </table>
 
-    <p class="light" style="margin-top:14px">
+    <p class="light library-footnote">
       {{ 'Counts include assets in nested collections. Deleting a collection unfiles its assets — it never deletes a file.'|t('library') }}
     </p>
   {% else %}
@@ -81,6 +83,6 @@ $('[data-library-delete]').on('click', function () {
       // rather than guessing at where the rows moved to.
       window.location.reload();
     })
-    .catch(() => Craft.cp.displayError());
+    .catch((e) => Craft.cp.displayError(e?.response?.data?.message));
 });
 {% endjs %}

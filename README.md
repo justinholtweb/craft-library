@@ -12,7 +12,7 @@ Library adds the missing half. It is the Craft answer to WordPress's
 assets, filters that work everywhere assets are chosen, and bulk editing that does not mean opening
 three hundred files one at a time.
 
-Distributed as `justinholtweb/craft-library`. **Lite $79 · Pro $59/year renewal.**
+Distributed as `justinholtweb/craft-library`. **Lite is free · Pro $79, then $59/year for updates.**
 
 ## What it does
 
@@ -71,13 +71,14 @@ several times over, which is enough to make almost every asset look used.
 Files are compared by size first and only hashed when a size is shared, so nothing is read unless it
 has a possible twin — which matters, because reading a file on a remote volume means downloading it.
 
-Resolving a duplicate **repoints every relation and recorded reference onto the original** and then
-moves the copy to the trash. Nothing that pointed at the copy breaks, and the delete is a soft one,
-so the decision is reversible.
+Resolving a duplicate **repoints every relation onto the original** and then moves the copy to the
+trash. Fields that pointed at the copy keep working, and the delete is a soft one, so the decision is
+reversible. A reference tag typed into text by hand (`{asset:412:url}`) is reported, not rewritten —
+editing somebody's copy is not Library's call — so check the list before you resolve.
 
 ### Alt text
 
-A "Missing alt text" source, an audit screen with per-site counts, and bulk filling from filenames or
+A "Missing alt text" source, an audit screen (Pro) with per-site counts, and bulk filling from filenames or
 titles. `brand-logo_dark-2024_FINAL-v3.png` becomes "Brand logo dark 2024".
 
 That is a first draft, not a description, and Library says so wherever it offers to write one. It is
