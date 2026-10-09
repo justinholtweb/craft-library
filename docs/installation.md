@@ -65,6 +65,7 @@ renaming, cross-volume moves and upload rules.
 | Bulk actions: add to and remove from collections | Yes | Yes |
 | Bulk action: set alt text from the filename or title | Yes | Yes |
 | `craft.library` Twig API (except `usageCount`) | Yes | Yes |
+| GraphQL: `libraryCollections` and the `libraryCollection` asset argument | Yes | Yes |
 | Console: `alt/report`, `alt/fill`, `audit/prune` | Yes | Yes |
 | **Is used anywhere** and **Has duplicate copies** filter rules | — | Yes |
 | **Used in** index column and "Used in" list on the asset panel | — | Yes |

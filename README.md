@@ -132,6 +132,22 @@ php craft plugin/install library
 `craft.library.assets()` returns an `AssetQuery`, so everything you would normally do to one still
 works. Filtering by a parent collection includes everything nested inside it.
 
+## GraphQL
+
+Give a schema **Library → Query for collections** and it gets a `libraryCollections` query and a
+`libraryCollection` argument on Craft's `assets`, `asset` and `assetCount` queries:
+
+```graphql
+{
+  assets(libraryCollection: "logos", kind: "image") { url alt }
+  libraryCollections(topLevel: true) { handle name children { handle } assetCount }
+}
+```
+
+The argument takes handles or UIDs and includes nested collections. It narrows Craft's own query, so
+results stay limited to the volumes the schema can read. An unknown handle returns nothing, not the
+whole library. It works on every edition.
+
 ## Console commands
 
 ```sh
@@ -185,7 +201,9 @@ it is enforced entirely in SQL and does not scale with the number of assets.
 
 ```sh
 docker exec -w /var/www/html ddev-plugin-testing-web \
-  php /var/www/craft-library/tests/integration/checks.php   # 78 checks
+  php /var/www/craft-library/tests/integration/checks.php    # 82 checks
+docker exec -w /var/www/html ddev-plugin-testing-web \
+  php /var/www/craft-library/tests/integration/graphql.php   # 18 checks
 ```
 
 The checks run against a real Craft install: real element saves, real files on a real volume, the

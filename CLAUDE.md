@@ -33,6 +33,21 @@ it before changing how filtering works — all three look right and all three fa
 Sidebar sources carry only criteria that are *complete*: collections use an explicit asset ID list,
 missing-alt uses native `kind` + `hasAlt`. Unused and Duplicates are deliberately not sources.
 
+### GraphQL
+
+`src/gql/LibraryQueries.php` + `src/gql/types/CollectionType.php`, registered in
+`Plugin::registerGraphQl()`. One schema component, `libraryCollections.all:read`, gates both the
+`libraryCollections` query and the `libraryCollection` argument on `assets`/`asset`/`assetCount`.
+
+Craft's asset resolver applies every argument as `$query->$key($value)`, and a plugin cannot add a
+method to `AssetQuery` (see `docs/plan.md`). So the argument is added in
+`EVENT_REGISTER_GQL_QUERIES` and the query's `resolve` is **wrapped**: the wrapper takes
+`libraryCollection` off and puts an `andWhere` EXISTS condition in its place, then calls Craft's
+resolver, which still applies the schema's volume limit. Not an `ArgumentManager` handler: those
+only run for non-empty values, so `libraryCollection: []` would reach the query and throw. Nested
+asset fields are not covered — their arguments become eager-loading criteria, which go through
+`Craft::configure()` and cannot carry a condition.
+
 ## Traps found while building this
 
 - **`relations.fieldId` is `notNull` with a foreign key to `fields`.** Plugin-owned relation rows are
@@ -88,8 +103,14 @@ No local PHP on this Mac. Everything runs inside the plugin-testing container:
 
 ```sh
 docker exec -w /var/www/html ddev-plugin-testing-web \
-  php /var/www/craft-library/tests/integration/checks.php   # 82 checks
+  php /var/www/craft-library/tests/integration/checks.php    # 82 checks
+docker exec -w /var/www/html ddev-plugin-testing-web \
+  php /var/www/craft-library/tests/integration/graphql.php   # 18 checks
 ```
+
+`graphql.php` makes its fixtures in the parent process and runs one child process per schema —
+Craft cannot rebuild a schema definition cleanly in one process. Assets have no statuses in Craft
+(`hasStatuses()` is false), so there is no "disabled asset" case to test.
 
 The checks switch the plugin to Pro for the run and restore the original edition afterwards. They
 build their own collections and their own image files in a temporary folder on a real volume, and

@@ -131,3 +131,11 @@ duplicate copies** rules, appear for everyone who can see the asset index. They 
 asset condition, not a separate screen.
 
 The **Library → Settings** link is shown to admins only.
+
+## GraphQL schemas
+
+GraphQL access is set per schema, not per user. Library adds one schema permission, **Library →
+Query for collections**. It turns on the `libraryCollections` query and the `libraryCollection`
+argument on asset queries. Asset results still need the schema's own volume permissions: Library
+never returns a file from a volume the schema can't read, even when the collection holds it. See
+[Usage](usage#graphql).

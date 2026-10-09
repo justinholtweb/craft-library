@@ -2,7 +2,7 @@
 title: Usage
 slug: usage
 order: 30
-summary: Collections, filters, sidebar sources, bulk editing, usage tracking, duplicates, alt text, upload rules and Twig.
+summary: Collections, filters, sidebar sources, bulk editing, usage tracking, duplicates, alt text, upload rules, Twig and GraphQL.
 ---
 
 ## Collections
@@ -398,6 +398,68 @@ A collection has `id`, `name`, `handle`, `description`, `color`, `parentId` and 
 
 `craft.library.assets()` returns a normal `AssetQuery`, so you can chain `.kind()`, `.orderBy()`,
 `.limit()`, eager loading and anything else onto it.
+
+## GraphQL
+
+Headless front ends get collections through Craft's GraphQL API, on every edition. Both pieces
+sit behind one schema permission: open the schema under **Settings → GraphQL → Schemas** and tick
+**Library → Query for collections**. Without it, neither the query nor the argument exists in
+that schema.
+
+### Filtering assets by collection
+
+Craft's `assets`, `asset` and `assetCount` queries take a `libraryCollection` argument. It accepts
+collection handles or UIDs, one or a list, and includes the collections nested inside the ones you
+name:
+
+```graphql
+{
+  assets(libraryCollection: "logos", kind: "image", limit: 12) {
+    url
+    alt
+  }
+  assetCount(libraryCollection: ["press-kit", "logos"])
+}
+```
+
+It narrows Craft's own query rather than replacing it. Every other argument still applies, and the
+results are still limited to the volumes the schema can read. A collection that spans three volumes
+returns only the files in the volumes that schema was given.
+
+A handle that matches no collection returns no assets. It does not return the whole library. An
+empty list (`libraryCollection: []`) means no filter, the same as leaving the argument out.
+
+The argument is on the top-level asset queries only. Asset fields nested inside an entry don't
+take it. To narrow those, filter the top-level `assets` query by `relatedToEntries` as well.
+
+### Listing collections
+
+```graphql
+{
+  libraryCollections {
+    handle
+    name
+    level
+    parent { handle }
+    children { handle }
+    assetCount
+  }
+}
+```
+
+`libraryCollections` returns every collection in tree order, each parent followed by the collections
+nested inside it. Its arguments:
+
+| Argument | Narrows to |
+|---|---|
+| `handle: [String]` | Collections with these handles |
+| `uid: [String]` | Collections with these UIDs |
+| `id: [Int]` | Collections with these IDs |
+| `topLevel: Boolean` | Only the top-level collections. Walk `children` for the rest |
+
+A collection has `id`, `uid`, `name`, `handle`, `description`, `color`, `parentId`, `level` (1 at the
+top), `parent`, `children` and `assetCount`. `assetCount` counts the files in the collection and
+everything nested inside it, in the volumes the schema can read. On a schema with no volumes, it is 0.
 
 ## Console
 

@@ -20,12 +20,15 @@ use craft\events\RegisterConditionRulesEvent;
 use craft\events\RegisterElementActionsEvent;
 use craft\events\RegisterElementSourcesEvent;
 use craft\events\RegisterElementTableAttributesEvent;
+use craft\events\RegisterGqlQueriesEvent;
+use craft\events\RegisterGqlSchemaComponentsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\events\DefineAttributeHtmlEvent;
 use craft\services\Elements;
 use craft\services\ElementSources;
 use craft\services\Gc;
+use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
@@ -38,6 +41,7 @@ use justinholtweb\library\elementactions\BulkRename;
 use justinholtweb\library\elementactions\MoveToVolume;
 use justinholtweb\library\elementactions\RemoveFromCollections;
 use justinholtweb\library\elementactions\SetAltText;
+use justinholtweb\library\gql\LibraryQueries;
 use justinholtweb\library\models\Settings;
 use justinholtweb\library\services\Alt;
 use justinholtweb\library\services\Collections;
@@ -128,6 +132,7 @@ class Plugin extends BasePlugin
         $this->registerRoutes();
         $this->registerPermissions();
         $this->registerTwig();
+        $this->registerGraphQl();
         $this->registerGarbageCollection();
     }
 
@@ -722,6 +727,28 @@ class Plugin extends BasePlugin
                 $variable->set('library', LibraryVariable::class);
             },
         );
+    }
+
+    /**
+     * Collections for headless front ends — `craft.library` is Twig-only, so this is how a
+     * decoupled site gets them. One schema component switches on both the `libraryCollections`
+     * query and the `libraryCollection` argument on Craft's asset queries; see LibraryQueries.
+     */
+    private function registerGraphQl(): void
+    {
+        Event::on(Gql::class, Gql::EVENT_REGISTER_GQL_QUERIES, function(RegisterGqlQueriesEvent $event) {
+            $event->queries = LibraryQueries::addAssetArguments(
+                array_merge($event->queries, LibraryQueries::getQueries()),
+            );
+        });
+
+        Event::on(Gql::class, Gql::EVENT_REGISTER_GQL_SCHEMA_COMPONENTS, function(RegisterGqlSchemaComponentsEvent $event) {
+            $event->queries[Craft::t('library', 'Library')] = [
+                LibraryQueries::COMPONENT . ':read' => [
+                    'label' => Craft::t('library', 'Query for collections'),
+                ],
+            ];
+        });
     }
 
     private function registerGarbageCollection(): void

@@ -1,5 +1,16 @@
 # Release Notes for Library
 
+## Unreleased
+
+### Added
+
+- **GraphQL** for headless sites, on every edition. A new schema permission, **Library → Query for
+  collections**, adds a `libraryCollections` query (the tree, with `children`, `parent`, `level` and
+  an `assetCount`) and a `libraryCollection` argument on Craft's `assets`, `asset` and `assetCount`
+  queries. The argument takes handles or UIDs and includes nested collections. It narrows Craft's own
+  query, so results stay limited to the volumes the schema can read, and an unknown handle returns
+  no assets rather than every asset.
+
 ## 5.0.0 - 2026-08-18
 
 Initial release.
