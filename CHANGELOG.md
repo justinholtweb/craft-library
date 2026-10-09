@@ -1,7 +1,6 @@
 # Release Notes for Library
 
-## Unreleased
-
+## 5.1.0 - 2026-10-09
 ### Added
 
 - **GraphQL** for headless sites, on every edition. A new schema permission, **Library → Query for
